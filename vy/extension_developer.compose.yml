@@ -5,14 +5,17 @@ x-vy:
 
 services:
   server:
-    command: sleep 10000
+    command: bash -c "cd /vydbg && code --no-sandbox -a . --user-data-dir /home/user/.vscode; sleep 10000"
+    user: user
+    # command: bash -c "cd /vydbg && code --no-sandbox --verbose -a . --user-data-dir /root/vscode; sleep 10000"
+    # command: sleep 10000
     image: ${IMAGE}
     restart: unless-stopped
-    user: user
     environment:
       DISPLAY: $DISPLAY
     volumes:
       - /tmp/.X11-unix:/tmp/.X11-unix:ro
-      - $EXTENSION:/myext
+      - $EXTENSION/vydbg:/vydbg
+      - $EXTENSION/examples:/home/user/Desktop/examples
 
 version: '3.6'

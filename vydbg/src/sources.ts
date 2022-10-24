@@ -9,7 +9,7 @@ interface VyBreakpoint {
 }
 
 export interface VyGdb {
-  file: string;
+	file: string;
 	path: vscode.Uri;
 	line: number;
 	obj: VyBreakpoint;
@@ -19,7 +19,6 @@ export interface stackTraceBody {
 	line: number;
 	source: vscode.Uri;
 }
-
 
 var dive = function (dir: string | undefined, pattern: RegExp) {
 	if (!dir) return [];
@@ -60,26 +59,6 @@ var dive = function (dir: string | undefined, pattern: RegExp) {
 export function search(session: vscode.DebugSession | undefined) {
 	return dive(session?.workspaceFolder?.uri.fsPath, /.*\.py/i);
 }
-
-export function checkVariables(breakpoints:Array<VyGdb>, current:stackTraceBody) {
-	
-	for (var ii = 0; ii < breakpoints.length; ii++) {
-		let bp = breakpoints[ii];
-		if (bp.path.path == current.source.path && bp.line == current.line) {
-			console.log('HOOORAY',bp)
-			if (bp.obj.variables) {
-				return Object.keys(bp.obj.variables).map(key => { 
-					return {key:key, expression:bp.obj.variables[key]}
-				});
-			} else {
-				console.log('No variables')
-			}
-			break
-		}
-	}
-
-}
-
 
 		// let prog = vydebugConfig.active_program;
 		// if (this._session && prog && vydebugConfig.programs && vydebugConfig.programs[prog]) {

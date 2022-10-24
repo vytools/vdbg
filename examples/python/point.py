@@ -10,11 +10,11 @@ class Point:
   def step(self):
     self.count += 1
     self.radius = 20+self.count
-    self.x = self.radius * math.sin(self.count/10); 
-    self.y = self.radius * math.cos(self.count/10);  
+    self.x = 10*self.radius * math.sin(self.count/10); 
+    self.y = 10*self.radius * math.cos(self.count/10);  
 
 p = Point()
 def point(count):
   p.step()
   # <vydbg {"name":"bkpntA","topic":"topicA","variables":{"count2":"count*2","p":"p"}} vydbg>
-  return {"x":p.x, "y":p.y}
+  return {"x":p.x, "y":p.y, "radius":p.radius}

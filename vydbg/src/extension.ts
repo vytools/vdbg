@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 const fs = require('fs');
-var path = require('path');
+const path = require('path');
+const JSON5 = require('json5');
 import * as vydbg_sources from './sources';
 // https://microsoft.github.io/debug-adapter-protocol/specification
 
@@ -15,8 +16,8 @@ class VyDebuggerPanel {
 	private _handlerUri: vscode.Uri|undefined;
 	
 	public breakPointsSet(breakpoints : Object) {
-		// console.log('setBreakpointsA: ',breakpoints);
-		// console.log('setBreakpointsB: ',this._breakpoints);
+		console.log('setBreakpointsA: ',breakpoints);
+		console.log('setBreakpointsB: ',this._breakpoints);
 	}
 
 	public sendMessage(data: Object) {
@@ -28,13 +29,19 @@ class VyDebuggerPanel {
 	}
 
 	public checkBreakpoint(bpsource:vydbg_sources.stackTraceBody) {
-		return vydbg_sources.checkVariables(this._breakpoints, bpsource);
+		for (var ii = 0; ii < this._breakpoints.length; ii++) {
+			let bp = this._breakpoints[ii];
+			if (bp.path.path == bpsource.source.path && bp.line == bpsource.line) {
+				return JSON.parse(JSON.stringify(bp.obj));
+			}
+		}
+		return false;
 	}
 
 	public refreshSession(session: vscode.DebugSession) {
 		this._session = session;
 		this._breakpoints = vydbg_sources.search(session);
-
+		// console.log('this._breakpoints = ',this._breakpoints)
 		if (!this._panel) return;
 		// if (!this._session) {
 		// 	vscode.window.showErrorMessage('vydbg error: No debug session');
@@ -122,13 +129,14 @@ class VyDebuggerPanel {
 					vscode.window.showErrorMessage(message.text);
 				} else if (message.type == 'get_breakpoints') {
 					this.sendMessage({ topic:'__breakpoints__', data:vydbg_sources.search(this._session) });		
-				} else if (message.type == 'debug') {
+				} else if (message.type == 'request') {
 					if (this._session) {
 						this._session.customRequest('stackTrace', { threadId: 1 }).then(sTrace => {
-							const frameId = sTrace.stackFrames[0].id; 
-							message.data.frameId = frameId;
+							message.data.frameId = sTrace.stackFrames[0].id;
 							if (this._session) {
-								this._session.customRequest(message.command, message.data);
+								this._session.customRequest(message.command, message.data).then(response => {
+									if (message.response_topic) this.sendMessage({topic:message.response_topic,response:response});
+								});
 							}
 						});
 					}
@@ -145,14 +153,11 @@ class VyDebuggerPanel {
 		this._contentProvider.dispose();
 		while (this._disposables.length) {
 			const x = this._disposables.pop();
-			if (x) {
-				x.dispose();
-			}
+			if (x) x.dispose();
 		}
 		this._panel = undefined;
 		const resources = vscode.Uri.joinPath(this._extensionUri,'media','resources').fsPath;
 		fs.rmdirSync(resources, { recursive: true });
-
 	}
 
 	private _update() {
@@ -173,8 +178,6 @@ class VyDebuggerPanel {
 				<head>
 					<meta charset="UTF-8">
 					<meta name="viewport" content="width=device-width, initial-scale=1.0">
-					<link  href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
-					<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.0/css/all.css" integrity="sha384-lZN37f5QGtY3VHgisS14W3ExzMWZxybE1SJSEsQp9S+oqd12jhcu+A56Ebc1zFSJ" crossorigin="anonymous">
 					<link href="${stylesResetUri}" rel="stylesheet">
 					<link href="${stylesMainUri}" rel="stylesheet">
 					<style>.vscode_vydbg_full { width:100%; height:100%; overflow:hidden }</style>
@@ -200,13 +203,6 @@ class VyDebuggerPanel {
 
 let VYD:VyDebuggerPanel | undefined;
 
-const customXRequest = function(session:vscode.DebugSession, cmd:string, args) {
-	session.customRequest('stackTrace', { threadId: 1 }).then(sTrace => {
-		args.frameId = sTrace.stackFrames[0].id; 
-		session.customRequest(cmd, args);
-	});
-}
-
 export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(
 		vscode.debug.onDidTerminateDebugSession(session => {
@@ -224,42 +220,52 @@ export function activate(context: vscode.ExtensionContext) {
 
 		createDebugAdapterTracker: (session: vscode.DebugSession) => {
 			let stoppedAt = false;
-			let variables = false;
 			if (!VYD) VYD = new VyDebuggerPanel(context.extensionUri, session);
 			VYD.refreshSession(session);
 	
 			return {
 				onWillReceiveMessage: async msg => {
-					console.log(`A ${JSON.stringify(msg, undefined, 2)}`)
+					// console.log(`A ${JSON.stringify(msg, undefined, 2)}`)
 				},
 				onDidSendMessage: async msg => {
-					console.log(`B ${JSON.stringify(msg, undefined, 2)}`)
+					// console.log(`B ${msg.type} ${JSON.stringify(msg, undefined, 2)}`)
 					if (VYD && msg.type == 'event') { // event = continue|stepIn|stepOut|next|stopped
 						if (msg.event === "stopped" && msg.body && msg.body.reason == "breakpoint") {
 							stoppedAt = true;
-							// VYD.sendMessage({ topic:'thistop', data:{} });
 						} else if (msg.event == 'output') {
-							// console.log('mmmmm',msg)
 						}
 					} else if (VYD && msg.type == 'response') { // command = variables|stackTrace|scopes|thread
 						if (msg.command == 'variables') {
 						} else if (msg.command == 'evaluate') {
-							console.log('evaluate::',msg)
-							if (variables) variables = false;
-							// 	variables.forEach(v => {
-							// 		if (v.expression == msg.body.expression)
-							// 	})
-							// }
 						} else if (stoppedAt == true && msg.command == 'stackTrace') {
 							stoppedAt = false;
 							let lastStackFrame = msg.body.stackFrames.slice(-1).pop();
 							// if (lastStackFrame) VYD.sendMessage({topic:'__stopped__',data:lastStackFrame});
-							if (lastStackFrame && !variables) {
-								variables = VYD.checkBreakpoint(lastStackFrame);
-								if (variables) {
-									// variables.forEach(v => {
-									// 	customXRequest(session,'evaluate',{expression:v.expression,context:'watch'});
-									// })
+							if (lastStackFrame) {
+								let breakpoint = VYD.checkBreakpoint(lastStackFrame);
+								if (!breakpoint) {
+								} else if (breakpoint.hasOwnProperty('variables')) {
+									let nvariables = Object.keys(breakpoint.variables).length;
+									for (const [key, exprsn] of Object.entries(breakpoint.variables)) {
+										session.customRequest('stackTrace', { threadId: 1 }).then(sTrace => {
+											let args = {expression:exprsn,context:'watch',frameId:sTrace.stackFrames[0].id}; 
+											session.customRequest('evaluate', args).then(response => {
+												console.log('response',response)
+												let val = (response.type == 'float') ? parseFloat(response.result) : 
+													((response.type == 'int') ? parseInt(response.result) : 
+													((response.type == 'dict') ? JSON5.parse(response.result) : 
+													response.result));
+												breakpoint.variables[key] = val;
+												nvariables -= 1;
+												if (nvariables == 0 && VYD) {
+													console.log('final response',breakpoint);
+													VYD.sendMessage(breakpoint);
+												}
+											});
+										});
+									}
+								} else {
+									VYD.sendMessage(breakpoint);
 								}
 							}
 						} else if (msg.command == 'setBreakpoints') {

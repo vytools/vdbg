@@ -10,8 +10,8 @@
 			"type": "extensionHost",
 			"request": "launch",
 			"runtimeExecutable": "${execPath}",
+			"outputCapture": "console",
 			"args": ["--extensionDevelopmentPath=${workspaceRoot}"],
-			"outFiles": ["${workspaceFolder}/out/**/*.js"],
 			"preLaunchTask": "npm: watch"
 		}
 	]

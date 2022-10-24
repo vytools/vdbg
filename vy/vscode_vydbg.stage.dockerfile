@@ -15,6 +15,12 @@ RUN apt-get install -y nodejs git
 
 RUN npm install -g yo generator-code
 
+# RUN mkdir -p /root/vscode
+# RUN code --no-sandbox --user-data-dir /root/vscode --install-extension ms-python.python
+
 RUN useradd user
 RUN mkdir -p /home/user
 RUN chown -R user /home/user
+USER user
+RUN code --install-extension ms-python.python
+USER root

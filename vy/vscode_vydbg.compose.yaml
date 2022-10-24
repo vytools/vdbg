@@ -11,6 +11,6 @@ services:
     ports:
       - 7000:7000
     volumes:
-      - $EXTENSION:/root/.vscode/extensions/ext1
+      - $EXTENSION/vydbg:/root/.vscode/extensions/ext1
 
 version: '3.6'
