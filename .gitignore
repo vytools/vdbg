@@ -1,0 +1,7 @@
+vydbg/node_modules/
+
+vydbg/out/
+
+examples/python/__pycache__/
+
+vydbg/media/resources/

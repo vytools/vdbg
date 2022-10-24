@@ -1,0 +1,12 @@
+{
+  "active_program": "test",
+  "programs": {
+    "test": {
+      "bkpntA": {"stop":"count > 2","static":{"z":1}}
+    }
+  },
+	"sources":[
+    {"src":"x.js","dst":"x.js"},
+    {"src":"handler.js","dst":"handler.js"}
+  ]
+}
