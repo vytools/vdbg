@@ -2,17 +2,17 @@ import * as vscode from 'vscode';
 const fs = require('fs');
 const path = require('path');
 const JSON5 = require('json5');
-import * as vydbg_sources from './sources';
+import * as vdbg_sources from './sources';
 // https://microsoft.github.io/debug-adapter-protocol/specification
 
-class VyDebuggerPanel {
+class vDbgPanel {
 	public _session: vscode.DebugSession | undefined;
-	public readonly viewType = 'vyDebugger';
+	public readonly viewType = 'vDbg';
 	private readonly _extensionUri: vscode.Uri;
 	private readonly _contentProvider: vscode.Disposable;
 	private _panel: vscode.WebviewPanel|undefined;
 	private _disposables: vscode.Disposable[] = [];
-	private _breakpoints: Array<vydbg_sources.VyGdb>;
+	private _breakpoints: Array<vdbg_sources.Vdbg>;
 	private _handlerUri: vscode.Uri|undefined;
 	
 	public breakPointsSet(breakpoints : Object) {
@@ -24,11 +24,11 @@ class VyDebuggerPanel {
 		if (this._panel) {
 			this._panel.webview.postMessage(data);
 		} else {
-			vscode.window.showErrorMessage('vydbg error: would send '+JSON.stringify(data)+' but no current webview');
+			vscode.window.showErrorMessage('vdbg error: would send '+JSON.stringify(data)+' but no current webview');
 		}
 	}
 
-	public checkBreakpoint(bpsource:vydbg_sources.stackTraceBody) {
+	public checkBreakpoint(bpsource:vdbg_sources.stackTraceBody) {
 		for (var ii = 0; ii < this._breakpoints.length; ii++) {
 			let bp = this._breakpoints[ii];
 			if (bp.path.path == bpsource.source.path && bp.line == bpsource.line) {
@@ -40,29 +40,29 @@ class VyDebuggerPanel {
 
 	public refreshSession(session: vscode.DebugSession) {
 		this._session = session;
-		this._breakpoints = vydbg_sources.search(session);
+		this._breakpoints = vdbg_sources.search(session);
 		// console.log('this._breakpoints = ',this._breakpoints)
 		if (!this._panel) return;
 		// if (!this._session) {
-		// 	vscode.window.showErrorMessage('vydbg error: No debug session');
+		// 	vscode.window.showErrorMessage('vdbg error: No debug session');
 		// 	return
 		// };
 		if (!session.workspaceFolder) {
-			vscode.window.showErrorMessage('vydbg error: No workspace loaded');
+			vscode.window.showErrorMessage('vdbg error: No workspace loaded');
 			return;
 		};
 		let folderUri:vscode.WorkspaceFolder = session.workspaceFolder;
-		let vydebugConfig = null;
+		let vdbgConfig = null;
 		try {
-			vydebugConfig = require(vscode.Uri.joinPath(folderUri.uri,'vydbg.json').fsPath);
+			vdbgConfig = require(vscode.Uri.joinPath(folderUri.uri,'vdbg.json').fsPath);
 		} catch(err) {
-			vscode.window.showErrorMessage('vydbg error: No parseable vydbg.json file in '+folderUri.uri.fsPath);
+			vscode.window.showErrorMessage('vdbg error: No parseable vdbg.json file in '+folderUri.uri.fsPath);
 			return;
 		}
-		// vscode.workspace.fs.writeFile(vydbgFile);
+		// vscode.workspace.fs.writeFile(vdbgFile);
 
-		for (var ii = 0; ii < vydebugConfig.sources.length; ii++) {
-			let resource = vydebugConfig.sources[ii];
+		for (var ii = 0; ii < vdbgConfig.sources.length; ii++) {
+			let resource = vdbgConfig.sources[ii];
 			let src = vscode.Uri.joinPath(folderUri.uri, resource.src).fsPath;
 			let dst = vscode.Uri.joinPath(this._extensionUri, 'media', 'resources', resource.dst);
 			if (dst.fsPath.indexOf('..') > -1) continue;
@@ -93,7 +93,7 @@ class VyDebuggerPanel {
 		this._session = session;
 		this._panel = vscode.window.createWebviewPanel(
 			this.viewType,
-			'Vy Debugger',
+			'Vdbg Window',
 			vscode.ViewColumn.Two,
 			{
 				enableScripts: true,
@@ -101,10 +101,10 @@ class VyDebuggerPanel {
 			},
 		);
 	
-		// Not currently using this but it would be nice if I could. I can't seem to use this with vydbg
+		// Not currently using this but it would be nice if I could. I can't seem to use this with vdbg
 		// scheme because it's blocked by cors. It's doesn't seem to work either to enhance non blocked ones
 		// (e.g. vscode-resource) 
-		this._contentProvider = vscode.workspace.registerTextDocumentContentProvider("vydbg",{
+		this._contentProvider = vscode.workspace.registerTextDocumentContentProvider("vdbg",{
 			provideTextDocumentContent(uri: vscode.Uri): string {
 				return 'console.log("BY JOVE!")';
 			}
@@ -128,7 +128,7 @@ class VyDebuggerPanel {
 				if (message.type == 'alert') {
 					vscode.window.showErrorMessage(message.text);
 				} else if (message.type == 'get_breakpoints') {
-					this.sendMessage({ topic:'__breakpoints__', data:vydbg_sources.search(this._session) });		
+					this.sendMessage({ topic:'__breakpoints__', data:vdbg_sources.search(this._session) });		
 				} else if (message.type == 'request') {
 					if (this._session) {
 						this._session.customRequest('stackTrace', { threadId: 1 }).then(sTrace => {
@@ -162,7 +162,7 @@ class VyDebuggerPanel {
 
 	private _update() {
 		if (!this._panel) return;
-		this._panel.title = 'Vy Debugger';
+		this._panel.title = 'Vdbg Window';
 		const stylesResetUri = this._panel.webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'reset.css'));
 		const stylesMainUri = this._panel.webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'vscode.css'));
 		if (!this._handlerUri) {
@@ -180,12 +180,12 @@ class VyDebuggerPanel {
 					<meta name="viewport" content="width=device-width, initial-scale=1.0">
 					<link href="${stylesResetUri}" rel="stylesheet">
 					<link href="${stylesMainUri}" rel="stylesheet">
-					<style>.vscode_vydbg_full { width:100%; height:100%; overflow:hidden }</style>
-					<title>Vy Debugger</title>
+					<style>.vdbg_full { width:100%; height:100%; overflow:hidden }</style>
+					<title>Vdbg Window</title>
 				</head>
-				<body class="vscode_vydbg_full">
-					<div class="vscode_vydbg_full" style="position:absolute;">
-						<div class="vscode_vydbg_full content"></div>
+				<body class="vdbg_full">
+					<div class="vdbg_full" style="position:absolute;">
+						<div class="vdbg_full content"></div>
 					</div>
 					<script type="module">
 						import {handler, initializer} from "${this._handlerUri}";
@@ -201,12 +201,12 @@ class VyDebuggerPanel {
 
 }
 
-let VYD:VyDebuggerPanel | undefined;
+let VDBG:vDbgPanel | undefined;
 
 export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(
 		vscode.debug.onDidTerminateDebugSession(session => {
-			// VyDebuggerPanel._session = undefined;
+			// vDbgPanel._session = undefined;
 		})
 	);
 
@@ -220,8 +220,8 @@ export function activate(context: vscode.ExtensionContext) {
 
 		createDebugAdapterTracker: (session: vscode.DebugSession) => {
 			let stoppedAt = false;
-			if (!VYD) VYD = new VyDebuggerPanel(context.extensionUri, session);
-			VYD.refreshSession(session);
+			if (!VDBG) VDBG = new vDbgPanel(context.extensionUri, session);
+			VDBG.refreshSession(session);
 	
 			return {
 				onWillReceiveMessage: async msg => {
@@ -229,20 +229,20 @@ export function activate(context: vscode.ExtensionContext) {
 				},
 				onDidSendMessage: async msg => {
 					// console.log(`B ${msg.type} ${JSON.stringify(msg, undefined, 2)}`)
-					if (VYD && msg.type == 'event') { // event = continue|stepIn|stepOut|next|stopped
+					if (VDBG && msg.type == 'event') { // event = continue|stepIn|stepOut|next|stopped
 						if (msg.event === "stopped" && msg.body && msg.body.reason == "breakpoint") {
 							stoppedAt = true;
 						} else if (msg.event == 'output') {
 						}
-					} else if (VYD && msg.type == 'response') { // command = variables|stackTrace|scopes|thread
+					} else if (VDBG && msg.type == 'response') { // command = variables|stackTrace|scopes|thread
 						if (msg.command == 'variables') {
 						} else if (msg.command == 'evaluate') {
 						} else if (stoppedAt == true && msg.command == 'stackTrace') {
 							stoppedAt = false;
 							let lastStackFrame = msg.body.stackFrames.slice(-1).pop();
-							// if (lastStackFrame) VYD.sendMessage({topic:'__stopped__',data:lastStackFrame});
+							// if (lastStackFrame) VDBG.sendMessage({topic:'__stopped__',data:lastStackFrame});
 							if (lastStackFrame) {
-								let breakpoint = VYD.checkBreakpoint(lastStackFrame);
+								let breakpoint = VDBG.checkBreakpoint(lastStackFrame);
 								if (!breakpoint) {
 								} else if (breakpoint.hasOwnProperty('variables')) {
 									let nvariables = Object.keys(breakpoint.variables).length;
@@ -257,19 +257,19 @@ export function activate(context: vscode.ExtensionContext) {
 													response.result));
 												breakpoint.variables[key] = val;
 												nvariables -= 1;
-												if (nvariables == 0 && VYD) {
+												if (nvariables == 0 && VDBG) {
 													console.log('final response',breakpoint);
-													VYD.sendMessage(breakpoint);
+													VDBG.sendMessage(breakpoint);
 												}
 											});
 										});
 									}
 								} else {
-									VYD.sendMessage(breakpoint);
+									VDBG.sendMessage(breakpoint);
 								}
 							}
 						} else if (msg.command == 'setBreakpoints') {
-							VYD.breakPointsSet(msg.body.breakpoints);
+							VDBG.breakPointsSet(msg.body.breakpoints);
 						}
 					} else {
 						// console.log('============== msg ',msg);

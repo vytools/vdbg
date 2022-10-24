@@ -1,13 +1,13 @@
 {
-	"name": "vy-debugger",
-	"description": "Vy Debugger - An extensible visual debugger",
+	"name": "vdbg-debugger",
+	"description": "Visual Debugger - An extensible visual debugger",
 	"version": "0.0.1",
 	"publisher": "Nate Bunderson",
 	"private": true,
 	"license": "MIT",
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/vytools/vscode_vydbg"
+		"url": "https://github.com/natebu/vdbg"
 	},
 	"engines": {
 		"vscode": "^1.47.0"
@@ -17,16 +17,16 @@
 	],
 	"activationEvents": [
 		"onDebug",
-		"onCommand:vyDebugger.start",
-		"onWebviewPanel:vyDebugger"
+		"onCommand:vDbg.start",
+		"onWebviewPanel:vDbg"
 	],
 	"main": "./out/extension.js",
 	"contributes": {
 		"commands": [
 			{
-				"command": "vyDebugger.start",
-				"title": "Start vy debugger",
-				"category": "VyDebugger"
+				"command": "vDbg.start",
+				"title": "Start vdbg",
+				"category": "vDbg"
 			}
 		]
 	},

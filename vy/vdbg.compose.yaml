@@ -1,7 +1,7 @@
 x-vy:
   anchors:
-    IMAGE: stage:vscode_vydbg
-    EXTENSION: vydir:vscode_vydbg
+    IMAGE: stage:vdbg
+    EXTENSION: vydir:vdbg
 
 services:
   server:

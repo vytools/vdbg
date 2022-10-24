@@ -2,17 +2,17 @@ import * as vscode from 'vscode';
 const fs = require('fs');
 const path = require('path');
 
-interface VyBreakpoint {
+interface Vbreakpoint {
 	name: string
 	topic?: string
 	variables?: object
 }
 
-export interface VyGdb {
+export interface Vdbg {
 	file: string;
 	path: vscode.Uri;
 	line: number;
-	obj: VyBreakpoint;
+	obj: Vbreakpoint;
 }
 
 export interface stackTraceBody {
@@ -22,23 +22,23 @@ export interface stackTraceBody {
 
 var dive = function (dir: string | undefined, pattern: RegExp) {
 	if (!dir) return [];
-	let vydbgs:Array<VyGdb> = [];
+	let vdbg:Array<Vdbg> = [];
 	let list = fs.readdirSync(dir);
 	list.forEach(function(file: string) { 				// For every file in the list
 		const pth = path.join(dir,file);									// Full path of that file
 		const stat = fs.statSync(pth);										// Get the file's stats
 		if (stat.isDirectory() && ['.git','.hg','__pycache__'].indexOf(file) == -1) {	// If the file is a directory
-			vydbgs = vydbgs.concat(dive(pth, pattern));			// Dive into the directory
+			vdbg = vdbg.concat(dive(pth, pattern));			// Dive into the directory
 		} else if (stat.isFile() && pattern.test(pth)) {	// If the file is a file
 			let data = fs.readFileSync(pth,{encoding:'utf8', flag:'r'});
 			let linecount = 1;
 			data.split('\n').forEach((line:string) => {
-				let matches = line.match( /<vydbg([\s\S]*?)vydbg>/gm);
+				let matches = line.match( /<vdbg([\s\S]*?)vdbg>/gm);
 				if (matches) {
 					matches.forEach((match:string) => {
 						try {
-							let m = JSON.parse(match.replace('<vydbg','').replace('vydbg>',''));
-							vydbgs.push({
+							let m = JSON.parse(match.replace('<vdbg','').replace('vdbg>',''));
+							vdbg.push({
 								file:file,
 								path:vscode.Uri.file(pth),
 								line:linecount+1, // todo, smarter way to go to next uncommented line
@@ -53,28 +53,9 @@ var dive = function (dir: string | undefined, pattern: RegExp) {
 			});
 		}
 	});
-	return vydbgs;
+	return vdbg;
 }
 
 export function search(session: vscode.DebugSession | undefined) {
 	return dive(session?.workspaceFolder?.uri.fsPath, /.*\.py/i);
 }
-
-		// let prog = vydebugConfig.active_program;
-		// if (this._session && prog && vydebugConfig.programs && vydebugConfig.programs[prog]) {
-		// 	
-		// 	let program = vydebugConfig.programs[prog];
-		// 	this._breakpoints = [];
-		// 	Object.keys(program).forEach(bpname => {
-		// 		vydbgs.forEach((bpp:vydbg_sources.VyGdb) => {
-		// 			if (bpp.obj.name == bpname) {
-		// 				this._breakpoints.push( bpp );
-		// 				const pos = new vscode.Position(bpp.line, 0);
-		// 				const loc = new vscode.Location(bpp.path, pos);
-		// 				let bp = new vscode.SourceBreakpoint(loc, true);
-		// 				vscode.debug.addBreakpoints([bp]);
-		// 			}
-		// 		});
-		// 		// let uri = vscode.Uri.joinPath(folderUri,'junk.py');
-		// 	});
-		// }
