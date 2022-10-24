@@ -2,8 +2,9 @@
 	"name": "vdbg-debugger",
 	"description": "Visual Debugger - An extensible visual debugger",
 	"version": "0.0.1",
-	"publisher": "Nate Bunderson",
+	"publisher": "vytools",
 	"private": true,
+	"icon":"media/logo128.png",
 	"license": "MIT",
 	"repository": {
 		"type": "git",

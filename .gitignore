@@ -1,7 +1,6 @@
-vdbg/node_modules/
-
-vdbg/out/
+workspace/node_modules/
+workspace/out/
 
 examples/python/__pycache__/
 
-vdbg/media/resources/
+workspace/media/resources/
