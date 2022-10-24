@@ -1,0 +1,16 @@
+x-vy:
+  anchors:
+    IMAGE: stage:vscode_vydbg
+    EXTENSION: vydir:vscode_vydbg
+
+services:
+  server:
+    command: bash -c "code-server --bind-addr 0.0.0.0:7000 & (sleep 1 && cat /root/.config/code-server/config.yaml && sleep 10000000)"
+    image: ${IMAGE}
+    restart: unless-stopped
+    ports:
+      - 7000:7000
+    volumes:
+      - $EXTENSION:/root/.vscode/extensions/ext1
+
+version: '3.6'
