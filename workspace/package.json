@@ -14,7 +14,8 @@
 		"vscode": "^1.47.0"
 	},
 	"categories": [
-		"Other"
+		"Debuggers",
+		"Visualization"
 	],
 	"activationEvents": [
 		"onDebug",

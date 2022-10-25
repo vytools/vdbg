@@ -15,6 +15,10 @@ class vDbgPanel {
 	private _breakpoints: Array<vdbg_sources.Vdbg>;
 	private _handlerUri: vscode.Uri|undefined;
 	
+	public breakpointCount() {
+		return this._breakpoints.length;
+	}
+
 	public breakPointsSet(breakpoints : Object) {
 		console.log('setBreakpointsA: ',breakpoints);
 		console.log('setBreakpointsB: ',this._breakpoints);
@@ -43,23 +47,20 @@ class vDbgPanel {
 		this._breakpoints = vdbg_sources.search(session);
 		// console.log('this._breakpoints = ',this._breakpoints)
 		if (!this._panel) return;
-		// if (!this._session) {
-		// 	vscode.window.showErrorMessage('vdbg error: No debug session');
-		// 	return
-		// };
+		if (!this._session) {
+			vscode.window.showErrorMessage('vdbg error: No debug session');
+			return
+		};
 		if (!session.workspaceFolder) {
 			vscode.window.showErrorMessage('vdbg error: No workspace loaded');
 			return;
 		};
 		let folderUri:vscode.WorkspaceFolder = session.workspaceFolder;
-		let vdbgConfig = null;
-		try {
-			vdbgConfig = require(vscode.Uri.joinPath(folderUri.uri,'vdbg.json').fsPath);
-		} catch(err) {
-			vscode.window.showErrorMessage('vdbg error: No parseable vdbg.json file in '+folderUri.uri.fsPath);
+		let vdbgConfig = session.configuration.vdbg;
+		if (!vdbgConfig || !vdbgConfig.sources) {
+			vscode.window.showErrorMessage('vdbg error: No "vdbg" field in launch configuration');
 			return;
 		}
-		// vscode.workspace.fs.writeFile(vdbgFile);
 
 		for (var ii = 0; ii < vdbgConfig.sources.length; ii++) {
 			let resource = vdbgConfig.sources[ii];
@@ -125,8 +126,10 @@ class vDbgPanel {
 		// Handle messages from the webview
 		this._panel.webview.onDidReceiveMessage(
 			message => {
-				if (message.type == 'alert') {
+				if (message.type == 'error') {
 					vscode.window.showErrorMessage(message.text);
+				} else if (message.type == 'info') {
+					vscode.window.showInformationMessage(message.text);
 				} else if (message.type == 'get_breakpoints') {
 					this.sendMessage({ topic:'__breakpoints__', data:vdbg_sources.search(this._session) });		
 				} else if (message.type == 'request') {
@@ -147,6 +150,10 @@ class vDbgPanel {
 		);
 	}
 
+	public disposed() {
+		return this._disposables.length == 0;
+	}
+
 	public dispose() {
 		// Clean up our resources
 		if (this._panel) this._panel.dispose();
@@ -157,7 +164,7 @@ class vDbgPanel {
 		}
 		this._panel = undefined;
 		const resources = vscode.Uri.joinPath(this._extensionUri,'media','resources').fsPath;
-		fs.rmdirSync(resources, { recursive: true });
+		fs.rmSync(resources, { recursive: true });
 	}
 
 	private _update() {
@@ -203,6 +210,60 @@ class vDbgPanel {
 
 let VDBG:vDbgPanel | undefined;
 
+const set_by_path = function(obj:any, path:Array<string>, val:any) {
+	let p0 = path[0].replace(/^\[/, '').replace(/\]$/, '').replace(/'$/, '').replace(/^'/, '');
+	path = path.slice(1);
+	if (path.length == 0) {
+		obj[p0] = val;
+	} else {
+		if (!obj.hasOwnProperty(p0) || (!Array.isArray(obj[p0]) && path[0] == '[0]')) {
+			obj[p0] = (path[0] == '[0]') ? [] : {};
+		}
+		set_by_path(obj[p0], path, val);
+	}
+}
+
+const parse_value = function(v:string) {
+	try {
+		return JSON5.parse(v);
+	} catch(err) {
+		let vv = parseFloat(v);
+		return (isNaN(vv)) ? v : vv;
+	}
+}
+
+const subvariables = function(session:vscode.DebugSession, response:any, arg2:any, path:Array<string>) {
+	// console.log(response)
+	if (response.command == 'evaluate' && response.variablesReference != 0) {
+		set_by_path(arg2.obj, path, {});
+		session.customRequest('variables', {variablesReference:response.variablesReference}).then(response2 => {
+			response2.command = 'variables';
+			subvariables(session, response2, arg2, path);
+		});
+	} else if (response.command == 'variables') {
+		arg2.nvariables -= 1;
+		arg2.nvariables += response.variables.length;
+		response.variables.forEach((varx:any) => {
+			if (['special variables','function variables','len()'].indexOf(varx.name) > -1) {
+				arg2.nvariables -= 1;
+			} else if (varx.variablesReference == 0) {
+				set_by_path(arg2.obj, path.concat([varx.name]), parse_value(varx.value));
+				arg2.nvariables -= 1;
+			} else {
+				session.customRequest('variables', {variablesReference:varx.variablesReference}).then(response2 => {
+					response2.command = 'variables';
+					subvariables(session, response2, arg2, path.concat([varx.name]));
+				});
+			}
+			if (arg2.nvariables == 0 && VDBG) VDBG.sendMessage(arg2.obj);
+		});
+	} else {
+		set_by_path(arg2.obj, path, parse_value(response.result));
+		arg2.nvariables -= 1;
+		if (arg2.nvariables == 0 && VDBG) VDBG.sendMessage(arg2.obj);
+	}
+}
+
 export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(
 		vscode.debug.onDidTerminateDebugSession(session => {
@@ -220,7 +281,10 @@ export function activate(context: vscode.ExtensionContext) {
 
 		createDebugAdapterTracker: (session: vscode.DebugSession) => {
 			let stoppedAt = false;
-			if (!VDBG) VDBG = new vDbgPanel(context.extensionUri, session);
+			if (!VDBG || VDBG.disposed()) {
+				VDBG = new vDbgPanel(context.extensionUri, session)
+			}
+			// vscode.window.showInformationMessage(`vdbg: Found ${VDBG.breakpointCount()} breakpoints`);
 			VDBG.refreshSession(session);
 	
 			return {
@@ -229,39 +293,26 @@ export function activate(context: vscode.ExtensionContext) {
 				},
 				onDidSendMessage: async msg => {
 					// console.log(`B ${msg.type} ${JSON.stringify(msg, undefined, 2)}`)
-					if (VDBG && msg.type == 'event') { // event = continue|stepIn|stepOut|next|stopped
-						if (msg.event === "stopped" && msg.body && msg.body.reason == "breakpoint") {
-							stoppedAt = true;
-						} else if (msg.event == 'output') {
-						}
+					if (VDBG && msg.type == 'event' && msg.event === "stopped" && msg.body?.reason == "breakpoint") { // event = continue|stepIn|stepOut|next|stopped
+						stoppedAt = true;
 					} else if (VDBG && msg.type == 'response') { // command = variables|stackTrace|scopes|thread
-						if (msg.command == 'variables') {
-						} else if (msg.command == 'evaluate') {
-						} else if (stoppedAt == true && msg.command == 'stackTrace') {
+						if (stoppedAt && msg.command == 'stackTrace') {
 							stoppedAt = false;
-							let lastStackFrame = msg.body.stackFrames.slice(-1).pop();
-							// if (lastStackFrame) VDBG.sendMessage({topic:'__stopped__',data:lastStackFrame});
-							if (lastStackFrame) {
+							if (msg.body && msg.body.stackFrames && msg.body.stackFrames.length > 0) {
+								let lastStackFrame = msg.body.stackFrames.slice(-1).pop();
 								let breakpoint = VDBG.checkBreakpoint(lastStackFrame);
 								if (!breakpoint) {
 								} else if (breakpoint.hasOwnProperty('variables')) {
-									let nvariables = Object.keys(breakpoint.variables).length;
+									let arg2 = {
+										nvariables: Object.keys(breakpoint.variables).length,
+										frameId:lastStackFrame.id,
+										obj:breakpoint
+									};
 									for (const [key, exprsn] of Object.entries(breakpoint.variables)) {
-										session.customRequest('stackTrace', { threadId: 1 }).then(sTrace => {
-											let args = {expression:exprsn,context:'watch',frameId:sTrace.stackFrames[0].id}; 
-											session.customRequest('evaluate', args).then(response => {
-												console.log('response',response)
-												let val = (response.type == 'float') ? parseFloat(response.result) : 
-													((response.type == 'int') ? parseInt(response.result) : 
-													((response.type == 'dict') ? JSON5.parse(response.result) : 
-													response.result));
-												breakpoint.variables[key] = val;
-												nvariables -= 1;
-												if (nvariables == 0 && VDBG) {
-													console.log('final response',breakpoint);
-													VDBG.sendMessage(breakpoint);
-												}
-											});
+										let args = {expression:exprsn,context:'watch',frameId:lastStackFrame.id}; 
+										session.customRequest('evaluate', args).then(response => {
+											response.command = 'evaluate';
+											subvariables(session, response, arg2, ["variables",key]);
 										});
 									}
 								} else {

@@ -1,6 +1,0 @@
-{
-	"sources":[
-    {"src":"x.js","dst":"x.js"},
-    {"src":"handler.js","dst":"handler.js"}
-  ]
-}

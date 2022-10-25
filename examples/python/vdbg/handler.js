@@ -1,4 +1,4 @@
-import { setup_generic_map } from "https://cdn.jsdelivr.net/gh/natebu/jsutilities@v0.1.20/generic_map.js";
+import { setup_generic_map } from "https://cdn.jsdelivr.net/gh/vytools/jsutilities@v1.0.0/generic_map.js";
 const DRAWDATA = {};
 let MAPFUNCS = {};
 let VSCODE = null;
@@ -18,16 +18,16 @@ export function initializer(contentdiv, vscode) {
 export function handler(data) {
 	if (!DRAWDATA.circles) DRAWDATA.circles = [];
 	if (!data || !data.topic) return
-	VSCODE.postMessage({type:'alert',text:'i heard '+data.topic});
+	VSCODE.postMessage({type:'info',text:'i heard '+data.topic});
 	let vrbls = data.variables;
 	if (data.topic == 'yo') {
-		VSCODE.postMessage({type:'alert',text:'yo response = '+JSON.stringify(data.response)});
+		VSCODE.postMessage({type:'error',text:'yo response = '+JSON.stringify(data.response)});
 	} else if (data.topic == '__breakpoints__') {
 		BREAKPOINTS = data.data;
 		VSCODE.postMessage({type:'request', response_topic:'yo', command:'evaluate',
 			data:{expression:'count*2',context:'watch'}
 		});
-		// VSCODE.postMessage({type:'alert',text:'i got breakpoints '+JSON.stringify(BREAKPOINTS)});
+		// VSCODE.postMessage({type:'info',text:'i got breakpoints '+JSON.stringify(BREAKPOINTS)});
 	} else if (data.topic == 'topicB') {
 		let n = DRAWDATA.circles.length;
 		DRAWDATA.circles.push({draw_type:'circle', fillStyle:'red', 

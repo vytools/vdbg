@@ -1,6 +1,6 @@
 workspace/node_modules/
 workspace/out/
-
+examples/cpp/build
 examples/python/__pycache__/
 
 workspace/media/resources/

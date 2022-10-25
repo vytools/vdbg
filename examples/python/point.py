@@ -1,5 +1,10 @@
 import math
 
+''' <vdbg_js
+
+
+vdbg_js> '''
+
 class Point:
   def __init__(self):
     self.x = 0
@@ -16,5 +21,5 @@ class Point:
 p = Point()
 def point(count):
   p.step()
-  # <vdbg {"name":"bkpntA","topic":"topicA","variables":{"count2":"count*2","p":"p"}} vdbg>
+  # <vdbg_bp {"name":"bkpntA","topic":"topicA","variables":{"count2":"count*2","p":"p"}} vdbg_bp>
   return {"x":p.x, "y":p.y, "radius":p.radius}
