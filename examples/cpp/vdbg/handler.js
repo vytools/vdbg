@@ -25,7 +25,7 @@ export function handler(data) {
 			x:vrbls.x, y:vrbls.y, radius:4, scaleSizeToScreen:true});
 		// VSCODE.postMessage({type:'info',text:'i heard '+JSON.stringify(vrbls.a.w.z)});
 		DRAWDATA.circles2 = vrbls.a.w.z.map(xy => {
-			return {draw_type:'circle', strokeStyle:'blue', 
+			return {draw_type:'circle', strokeStyle:'green', lineWidth:1,
 			x:xy.x, y:xy.y, radius:6, scaleSizeToScreen:true};
 		})
 	}
