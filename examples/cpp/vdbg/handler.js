@@ -16,11 +16,13 @@ export function initializer(contentdiv, vscode) {
 }
 
 export function handler(data) {
+	console.log('data',data)
 	if (!DRAWDATA.circles) DRAWDATA.circles = [];
 	if (!data || !data.topic) return
 	VSCODE.postMessage({type:'info',text:'i heard '+data.topic});
 	let vrbls = data.variables;
 	if (data.topic == 'sample') {
+		VSCODE.postMessage({type:'info',text:`i got ${vrbls.a.w.z.length} samples`});
 		DRAWDATA.circles.push({draw_type:'circle', fillStyle:'red', 
 			x:vrbls.x, y:vrbls.y, radius:4, scaleSizeToScreen:true});
 		// VSCODE.postMessage({type:'info',text:'i heard '+JSON.stringify(vrbls.a.w.z)});

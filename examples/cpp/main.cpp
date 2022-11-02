@@ -1,5 +1,6 @@
 #include <vector>
 #include <cmath>
+#include <string>
 #include "bisection.cpp"
 double line(double x) { return x; }
 double sq(double x) { return x*x-4; }
@@ -22,7 +23,9 @@ struct XY3 {
 
 int main() {
   XY3 a;
-  for (int ii = 0; ii < 1002; ii++) {
+  std::string x = "hey der bub";
+  // <vdbg_bp {"name":"sample","topic":"xx","variables":{"x":"x"}} vdbg_bp>
+  for (int ii = 0; ii < 100; ii++) {
     double x  = ii*0.01 - 5;
     a.w.z.push_back({x,sig(x)});
   }
