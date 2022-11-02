@@ -1,9 +1,6 @@
 import * as vscode from 'vscode';
 import { vDbgPanel } from './vdbgpanel';
-import { get_variables } from './parser';
-
 // https://microsoft.github.io/debug-adapter-protocol/specification
-
 
 export function activate(context: vscode.ExtensionContext) {
 	let VDBG:vDbgPanel | undefined;
@@ -35,17 +32,7 @@ export function activate(context: vscode.ExtensionContext) {
 				onDidSendMessage: async msg => {
 					// console.log(`B ${msg.type} ${JSON.stringify(msg, undefined, 2)}`)
 					if (VDBG && msg.type == 'response' && msg.command == 'stackTrace' && msg.body?.stackFrames?.length > 0) { // command = variables|stackTrace|scopes|thread
-						let firstStackFrame = msg.body.stackFrames[0];
-						let breakpoint = VDBG.checkBreakpoint(firstStackFrame);
-						if (breakpoint?.hasOwnProperty('variables')) {
-							// vscode.window.showInformationMessage(`Breakpoint ${JSON.stringify(breakpoint)}`);
-							get_variables(session, breakpoint, firstStackFrame.id, VDBG);
-						} else {
-							VDBG.sendMessage(breakpoint);
-						}
-					} else if (VDBG && msg.type == 'response' && msg.command == 'setBreakpoints') {
-						// console.log('setBreakpointsA: ',msg.body.breakpoints);
-						// console.log('setBreakpointsB: ',VDBG._breakpoints);
+						VDBG.checkBreakpoint(msg.body.stackFrames[0]); // send in first stackFrame
 					}
 				},
 			};

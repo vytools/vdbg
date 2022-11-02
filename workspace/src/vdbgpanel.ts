@@ -13,10 +13,6 @@ export class vDbgPanel {
 	private _disposables: vscode.Disposable[] = [];
 	private _breakpoints: Array<vdbg_sources.Vdbg>;
 	private _handlerUri: vscode.Uri|undefined;
-	
-	public breakpointCount() {
-		return this._breakpoints.length;
-	}
 
 	public sendMessage(data: Object) {
 		if (this._panel) {
@@ -30,25 +26,41 @@ export class vDbgPanel {
 		for (var ii = 0; ii < this._breakpoints.length; ii++) {
 			let bp = this._breakpoints[ii];
 			if (bp.path.path == bpsource.source.path && bp.line == bpsource.line) {
-				return JSON.parse(JSON.stringify(bp.obj));
+				if (bp?.obj?.variables) {
+					let n = Object.keys(bp.obj.variables).length;
+					let obj = JSON.parse(JSON.stringify(bp.obj));
+					for (const [key, value] of Object.entries(obj.variables)) {
+						this?._session?.customRequest('evaluate', {expression:`-exec print ${value}`, context:'repl'}).then(response => {
+							obj.variables[key] = response.result;
+							n -= 1;
+							if (n == 0) this.sendMessage(obj);
+						});
+					}
+				} else {
+					this.sendMessage(bp.obj);
+				}
+				break;
 			}
 		}
-		return false;
+	}
+
+	public refreshVgdbBreakpoints() {
+		if (!(this._panel && this._session)) {
+			vscode.window.showErrorMessage('vdbg error: No debug session or panel');
+			return false;
+		};
+		try {
+			this._breakpoints = vdbg_sources.search(this._session);
+		} catch(err) {
+			vscode.window.showErrorMessage('vdbg error: Failed to find breakpoints '+err);
+			return false
+		}
+		this.sendMessage({ topic:'__on_get_breakpoints__', data:this._breakpoints });		
+		return true;
 	}
 
 	public refreshSession(session: vscode.DebugSession) {
 		this._session = session;
-		try {
-			this._breakpoints = vdbg_sources.search(session);
-		} catch(err) {
-			vscode.window.showErrorMessage('vdbg error: Failed to find breakpoints '+err);
-			return
-		}
-		if (!this._panel) return;
-		if (!this._session) {
-			vscode.window.showErrorMessage('vdbg error: No debug session');
-			return
-		};
 		if (!session.workspaceFolder) {
 			vscode.window.showErrorMessage('vdbg error: No workspace loaded');
 			return;
@@ -81,7 +93,8 @@ export class vDbgPanel {
 			}
 		}
 		this._update();
-		this._panel.reveal(vscode.ViewColumn.Two);
+		this._panel?.reveal(vscode.ViewColumn.Two);
+		if (!this.refreshVgdbBreakpoints()) return;
 	}
 
 	constructor(extensionUri: vscode.Uri, session: vscode.DebugSession) {
@@ -127,19 +140,12 @@ export class vDbgPanel {
 				} else if (message.type == 'info') {
 					vscode.window.showInformationMessage(message.text);
 				} else if (message.type == 'get_breakpoints') {
-					this.sendMessage({ topic:'__breakpoints__', data:vdbg_sources.search(this._session) });		
+					this.refreshVgdbBreakpoints();
 				} else if (message.type == 'vdbg_bp') {
-				} else if (message.type == 'request') {
-					if (this._session) {
-						this._session.customRequest('stackTrace', { threadId: 1 }).then(sTrace => {
-							message.data.frameId = sTrace.stackFrames[0].id;
-							if (this._session) {
-								this._session.customRequest(message.command, message.data).then(response => {
-									if (message.response_topic) this.sendMessage({topic:message.response_topic,response:response});
-								});
-							}
-						});
-					}
+				} else if (message.type == 'exec' && this._session) {
+					this._session.customRequest('evaluate', {expression:`-exec ${message.expression}`, context:'repl'}).then(response => {
+						if (message.topic) this.sendMessage({topic:message.topic,response:response});
+					});
 				}
 			},
 			null,
