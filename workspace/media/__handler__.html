@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<title>Vdbg Window</title>
+	</head>
+	<body>
+		<script type="module">
+
+const VSCODE = acquireVsCodeApi();
+const PARSERS = {};
+const HANDLERS = {};
+PARSERS.cpp = function(stri) {
+	let newstr = stri.slice(stri.indexOf('=') + 1).trim();
+	newstr = newstr.replace(/std::[a-zA-Z0-9_\-,\s]+= /g,'');														// console.log('-A-',newstr);
+	newstr = newstr.replace(/\[("[\w]+")\] = /g,'$1:'); // for std::map when a string is used?						// console.log('-B-',newstr);
+	newstr = newstr.replace(/\[([0-9]+)\] = /g,'');		// for std::vector, std::list, std::tuple and std::pair?	// console.log('-C-',newstr);
+	newstr = newstr.replace(/({|(, ))((\w+)) = /g,'$1"$3":');	// put quotes around variable names					// console.log('-D-',newstr);
+	let openindex = [];
+	let newstr2 = '';
+	for (var ii = 0; ii < newstr.length; ii++) {
+		let c = newstr[ii];
+		if (c == '{' && ii < newstr.length-1) {
+			let isobj = newstr[ii+1]=='"';
+			openindex.push(isobj);
+			newstr2 += (isobj) ? '{' : '[';
+		} else if (c == '}') {
+			newstr2 += (openindex.pop()) ? '}' : ']';
+		} else {
+			newstr2 += c;
+		}
+	}
+	// console.log('-E-',newstr2);
+ 	try {
+		return JSON.parse(newstr2);
+	} catch(err) {
+		console.log('Failed to parse string as json:\n'+newstr)
+		return undefined;
+	}
+}
+
+import(/*HANDLER_IMPORT*/)
+  .then(obj => {
+	if (obj.load) obj.load(VSCODE, PARSERS, HANDLERS);
+  })
+  .catch(err => console.log('err',err))
+
+const import_from_string_list = function(module_list) {
+	if (module_list.length == 0) return;
+	let snip = module_list.pop();
+	console.log('snip',snip)
+	import(`data:text/javascript;base4,${btoa(snip)}`).then(exports => {
+		console.log('---',Object.keys(exports))
+		// if (exports.hasOwnProperty('load')) exports.load(VSCODE, PARSERS, HANDLERS);
+		import_from_string_list(module_list);
+	});
+}
+
+window.addEventListener('message', event => {
+	let data = event.data;
+	// console.log('--data',JSON.stringify(data))
+	if (!data || !data.topic) return
+	if (data.topic == '__imports__') {
+		import_from_string_list(data.imports);
+	} else {
+		if (HANDLERS.hasOwnProperty(data.topic)) HANDLERS[data.topic](data);
+	}
+});
+
+		</script>
+	</body>
+</html>

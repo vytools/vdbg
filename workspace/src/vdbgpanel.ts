@@ -173,34 +173,11 @@ export class vDbgPanel {
 	private _update() {
 		if (!this._panel) return;
 		this._panel.title = 'Vdbg Window';
-		const stylesResetUri = this._panel.webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'reset.css'));
-		const stylesMainUri = this._panel.webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'vscode.css'));
-		if (!this._handlerUri) {
-			this._panel.webview.html = `<!DOCTYPE html><html lang="en"><body><p>no handler defined</p></body></html>`;	
-		} else {
-			this._panel.webview.html = `<!DOCTYPE html><html lang="en">
-				<head>
-					<meta charset="UTF-8">
-					<meta name="viewport" content="width=device-width, initial-scale=1.0">
-					<link href="${stylesResetUri}" rel="stylesheet">
-					<link href="${stylesMainUri}" rel="stylesheet">
-					<style>.vdbg_full { width:100%; height:100%; overflow:hidden }</style>
-					<title>Vdbg Window</title>
-				</head>
-				<body class="vdbg_full">
-					<div class="vdbg_full" style="position:absolute;">
-						<div class="vdbg_full content"></div>
-					</div>
-					<script type="module">
-						import {handler, initializer} from "${this._handlerUri}";
-						initializer(document.querySelector('.content'), acquireVsCodeApi());
-						window.addEventListener('message', event => {
-							handler(event.data);
-						});
-					</script>
-				</body>
-			</html>`;
-		}
+		// const stylesResetUri = this._panel.webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'reset.css'));
+		// const stylesMainUri = this._panel.webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'vscode.css'));
+		let html = fs.readFileSync(vscode.Uri.joinPath(this._extensionUri, 'media', '__handler__.html').fsPath,{encoding:'utf8', flag:'r'});
+		console.log('_update')
+		this._panel.webview.html = html.replace('/*HANDLER_IMPORT*/',`"${this._handlerUri}"`);;	
 	}
 
 }
