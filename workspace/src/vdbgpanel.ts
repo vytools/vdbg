@@ -13,6 +13,7 @@ export class vDbgPanel {
 	private _disposables: vscode.Disposable[] = [];
 	private _breakpoints: Array<vdbg_sources.Vdbg>;
 	private _handlerUri: vscode.Uri|undefined;
+	private _firststop: Boolean = true;
 
 	public sendMessage(data: Object) {
 		if (this._panel) {
@@ -22,7 +23,24 @@ export class vDbgPanel {
 		}
 	}
 
+	public setupGdb() {
+		let top = this;
+		top?._session?.customRequest('evaluate', {expression:`-exec set print elements 0`, context:'repl'}).then(r1 => {
+			top?._session?.customRequest('evaluate', {expression:`-exec set print repeats 0`, context:'repl'}).then(r2 => {
+			});
+		});
+	}
+	
+	public terminatedDebug() {
+		this._firststop = true;
+	}
+	
 	public checkBreakpoint(bpsource:vdbg_sources.stackTraceBody) {
+		if (this._firststop) {
+			this._firststop = false;
+			this.setupGdb();
+		}
+
 		for (var ii = 0; ii < this._breakpoints.length; ii++) {
 			let bp = this._breakpoints[ii];
 			if (bp.path.path == bpsource.source.path && bp.line == bpsource.line) {

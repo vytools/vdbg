@@ -7,7 +7,7 @@ export function activate(context: vscode.ExtensionContext) {
 	
 	context.subscriptions.push(
 		vscode.debug.onDidTerminateDebugSession(session => {
-			// vDbgPanel._session = undefined;
+			VDBG?.terminatedDebug();
 		})
 	);
 

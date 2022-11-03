@@ -29,7 +29,7 @@
             ],
             "vdbg":{
                 "sources":[
-                    {"src":"vdbg/handler.js","dst":"handler.js"}
+                    {"src":"vdbg.js","dst":"vdbg.js"}
                 ]
             }
         }
