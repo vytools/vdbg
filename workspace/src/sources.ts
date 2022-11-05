@@ -8,30 +8,39 @@ interface Vbreakpoint {
 	variables?: object
 }
 
-export interface Vdbg {
+interface Vbpobj {
 	file: string;
 	path: vscode.Uri;
 	line: number;
 	obj: Vbreakpoint;
 }
 
+export interface Vdbg {
+	breakpoints:Array<Vbpobj>,
+	snips:Array<string>
+}
+
 export interface stackTraceBody {
+	id: number;
 	line: number;
 	source: vscode.Uri;
 }
 
-var dive = function (dir: string | undefined, pattern: RegExp) {
-	if (!dir) return [];
-	let vdbg:Array<Vdbg> = [];
-	let list = fs.readdirSync(dir);
-	list.forEach(function(file: string) { 												// For every file in the list
-		const pth = path.join(dir,file);												// Full path of that file
-		const stat = fs.statSync(pth);													// Get the file's stats
-		if (stat.isDirectory() && ['.git','.hg','__pycache__'].indexOf(file) == -1) {	// If the file is a directory
-			vdbg = vdbg.concat(dive(pth, pattern));										// Dive into the directory
-		} else if (stat.isFile() && pattern.test(pth)) {	
+
+export function search(source_string:string) {
+	let vdbg:Vdbg = {breakpoints:[], snips:[]};
+	let sources = source_string.split(/\n/g).join(', ').split(', ');
+	sources.forEach(function(pth: string) { // For every file in the list
+		if (fs.existsSync(pth) && fs.statSync(pth).isFile()) {	
 			try {
+				const uri = vscode.Uri.file(pth);
 				let data = fs.readFileSync(pth,{encoding:'utf8', flag:'r'});
+				let matches = data.match(/<vdbg_js([\s\S]*?)vdbg_js>/gm);
+				if (matches) {
+					matches.forEach((match:string) => {
+						vdbg.snips.push(match.replace('<vdbg_js','').replace('vdbg_js>',''));
+					});
+				}
 				let linecount = 1;
 				data.split('\n').forEach((line:string) => {
 					let matches = line.match( /<vdbg_bp([\s\S]*?)vdbg_bp>/gm);
@@ -39,12 +48,7 @@ var dive = function (dir: string | undefined, pattern: RegExp) {
 						matches.forEach((match:string) => {
 							try {
 								let m = JSON.parse(match.replace('<vdbg_bp','').replace('vdbg_bp>',''));
-								vdbg.push({
-									file:file,
-									path:vscode.Uri.file(pth),
-									line:linecount+1, // todo, smarter way to go to next uncommented line
-									obj:m
-								});
+								vdbg.breakpoints.push({file:path.basename(pth),path:uri,line:linecount+1,obj:m});
 							} catch(err) {
 								console.error(`Error parsing sources: ${err}`);
 							}
@@ -52,15 +56,10 @@ var dive = function (dir: string | undefined, pattern: RegExp) {
 					}
 					linecount++;
 				});
-
 			} catch (err) {
 				vscode.window.showErrorMessage(`vdbg: Problem reading source file ${pth}`);
 			}
 		}
 	});
 	return vdbg;
-}
-
-export function search(session: vscode.DebugSession | undefined) {
-	return dive(session?.workspaceFolder?.uri.fsPath, /.*/); // /.*\.py/i
 }

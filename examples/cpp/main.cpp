@@ -9,6 +9,18 @@ double sq(double x) { return x*x-4; }
 double sig(double x) { return 1/(1+std::exp(-(x-0.4)*12))-0.04; }
 double powr(double x) { return std::pow(x+1.2,8) - 1; }
 
+/*<vdbg_js 
+export function load(OVERLOADS) {
+  OVERLOADS.PARSERS.fullfunc = function(data) {
+			if (OVERLOADS.PARSERS.vdbg_cpp(data)) {
+				OVERLOADS.DRAWDATA.plot = {draw_type:'polygon', strokeStyle:'green', lineWidth:4,
+					points:data.variables.xy, scaleSizeToScreen:true, draw_toggle:'plot'};
+				OVERLOADS.MAPFUNCS.draw();
+			}
+  }
+}
+vdbg_js>*/
+
 struct XY {
     double x;
     double y;
@@ -37,6 +49,7 @@ void some_stuff() {
   std::vector<std::tuple<std::unordered_map<std::string, XY1>,int>> j;
   j.push_back(h);
   j.push_back(h);
+ 
   // <vdbg_bp {"name":"test","topic":"test","variables":{"j":"j"}} vdbg_bp>
   std::string x = "hey der bub";
   // <vdbg_bp {"name":"junk","topic":"xx","variables":{"x":"x"}} vdbg_bp>
@@ -50,7 +63,7 @@ int main() {
     double x  = ii*0.01 - 5;
     xy.push_back({x,sig(x)});
   }
-  // <vdbg_bp {"name":"list","topic":"list","variables":{"xy":"xy"}} vdbg_bp>
+  // <vdbg_bp {"name":"function","topic":"fullfunc","variables":{"xy":"xy"}} vdbg_bp>
   for (int ii = 0; ii < 8; ii++) {
     double xrr;
     bool s = bisection(-1, 1, 0.0001, ii+1, sig, xrr);
