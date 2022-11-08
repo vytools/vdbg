@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 const fs = require('fs');
 const path = require('path');
-import * as vdbg_sources from './sources';
+import * as vdbg_sources from './types/sources';
 // https://microsoft.github.io/debug-adapter-protocol/specification
 
 const makeid = function() {
@@ -16,14 +16,13 @@ const makeid = function() {
 
 export class vDbgPanel {
 	public _session: vscode.DebugSession | undefined;
+	private _type: vdbg_sources.LanguageDbgType | undefined;
 	public readonly viewType = 'vDbg';
 	private readonly _extensionUri: vscode.Uri;
 	private readonly _contentProvider: vscode.Disposable;
 	private _dynamicUri: Array<vscode.Uri> = []
 	private _panel: vscode.WebviewPanel|undefined;
 	private _disposables: vscode.Disposable[] = [];
-	private _vdbgs: vdbg_sources.Vdbg = {breakpoints:[], snips:[]};
-	private _freshstart: Boolean = true;
 
 	public sendMessage(data: Object) {
 		if (this._panel) {
@@ -34,40 +33,25 @@ export class vDbgPanel {
 	}
 	
 	public checkBreakpoint(bpsource:vdbg_sources.stackTraceBody) {
-		if (this._freshstart) {
-			this._freshstart = false;
-			this?._session?.customRequest('evaluate', {expression:`-exec set print elements 0`, context:'repl'});
-			this?._session?.customRequest('evaluate', {expression:`-exec set print repeats 0`, context:'repl'});
-		}
+		this._type?.check_breakpoint(bpsource, (obj:Object) => {this.sendMessage(obj)});
+	}
 
-		for (var ii = 0; ii < this._vdbgs.breakpoints.length; ii++) {
-			let bp = this._vdbgs.breakpoints[ii];
-			if (bp.path.path == bpsource.source.path && bp.line == bpsource.line) {
-				if (bp?.obj?.variables) {
-					let n = Object.keys(bp.obj.variables).length;
-					let obj = JSON.parse(JSON.stringify(bp.obj));
-					for (const [key, value] of Object.entries(obj.variables)) {
-						let req = {expression:`-exec print ${value}`, frameId:bpsource.id, context:'repl'};
-						if (!this?._session) {
-							vscode.window.showInformationMessage('zoinks!')
-						}
-						this?._session?.customRequest('evaluate', req).then(response => {
-							obj.variables[key] = response.result;
-							n -= 1;
-							if (n == 0) this.sendMessage(obj);
-						});
-					}
-				} else {
-					this.sendMessage(bp.obj);
-				}
-				break;
-			}
+	public setSession(session: vscode.DebugSession) {
+		this._session = session;
+	}
+
+	public clearDynamicFolder() {
+		let resources = vscode.Uri.joinPath(this._extensionUri,'media','resources').fsPath;
+		if (fs.existsSync(resources) && fs.statSync(resources).isDirectory()) {	// If the file is a directory
+			fs.readdirSync(resources).forEach(function(subpth: string) {
+				const pth = path.join(resources,subpth);
+				if (fs.existsSync(pth) && fs.statSync(pth).isDirectory()) fs.rmSync(pth, { recursive: true });
+			});
 		}
 	}
 
-	public refreshSession(vdbgs:vdbg_sources.Vdbg, session: vscode.DebugSession) {
-		this._freshstart = true;
-		this._session = session;
+	public setType(typ:vdbg_sources.LanguageDbgType) {
+		this._type = typ;
 		this._dynamicUri.splice(0,this._dynamicUri.length);
 		if (!(this._panel && this._session)) {
 			vscode.window.showErrorMessage('vdbg error: No debug session or panel');
@@ -77,48 +61,38 @@ export class vDbgPanel {
 			return false;
 		}
 
-		this._vdbgs = vdbgs;
 		let folderUri:vscode.WorkspaceFolder = this._session.workspaceFolder;
 		let vdbgConfig = this._session.configuration.vdbg;
 		if (!vdbgConfig || !vdbgConfig.sources) {
 			vscode.window.showErrorMessage(`vdbg error: No "vdbg" field in launch configuration ${JSON.stringify(this._session.configuration)}`);
 			return;
 		}
-
+		let vdbgs:vdbg_sources.Vdbg = this._type.get_vdbg();
 		let jspaths:Array<vscode.Uri> = [];
 
-		// order will end up being:
-		// - 1. load from media/js (vdbg built in, )
-		let jspath = vscode.Uri.joinPath(this._extensionUri, 'media','js');
-		let files = fs.readdirSync(jspath.fsPath);
-		for (var ii = 0; ii < files.length; ii++) {
-			let p = vscode.Uri.joinPath(jspath,files[ii]);
-			if (fs.statSync(p.fsPath).isFile()) jspaths.push(this._panel?.webview.asWebviewUri(p));
-		}
-
-		// - 2. load from embedded <vdbg_js ... vdb_js> tags
-		let dynamicFolder = vscode.Uri.joinPath(this._extensionUri, 'media', 'dynamic');
+		// - 1. load from embedded <vdbg_js ... vdb_js> tags
+		this.clearDynamicFolder();
+		let dynamicFolder = vscode.Uri.joinPath(this._extensionUri, 'media', 'resources', makeid());
 		if (!fs.existsSync(dynamicFolder.fsPath)) fs.mkdirSync(dynamicFolder.fsPath, { recursive: true });
-		for (var ii = 0; ii < this._vdbgs.snips.length; ii++) {
+		for (var ii = 0; ii < vdbgs.snips.length; ii++) {
 			let dst = vscode.Uri.joinPath(dynamicFolder, makeid()+'.js');
-			fs.writeFileSync(dst.fsPath, this._vdbgs.snips[ii],{encoding:'utf8'});
-			jspaths.push((dst).with({ 'scheme': 'vscode-resource' }));
+			fs.writeFileSync(dst.fsPath, vdbgs.snips[ii],{encoding:'utf8'});
+			jspaths.push(dst);
 		}
 
-		// - 3. load from first item in launch.configuration.vdbg.sources
+		// - 2. load from first item in launch.configuration.vdbg.sources
 		for (var ii = 0; ii < vdbgConfig.sources.length; ii++) {
 			let resource = vdbgConfig.sources[ii];
 			let src = vscode.Uri.joinPath(folderUri.uri, resource.src).fsPath;
-			let dst = vscode.Uri.joinPath(this._extensionUri, 'media', 'resources', resource.dst);
-			// vscode.window.showInformationMessage(`vdbg: Installing ${src} to ${dst}`);
+			let dst = vscode.Uri.joinPath(dynamicFolder, resource.dst);
 			if (dst.fsPath.indexOf('..') > -1) continue;
-			if (ii == 0) jspaths.push((dst).with({ 'scheme': 'vscode-resource' }));
+			if (ii == 0) jspaths.push(dst);
 			try {
 				if (fs.existsSync(src)) {
 					let targetDir = path.dirname(dst.fsPath);
 					if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
 					if (fs.existsSync(dst.fsPath)) fs.rmSync(dst.fsPath);
-					fs.copyFileSync(src,dst.fsPath);
+					fs.copyFileSync(src, dst.fsPath);
 				} else {
 					vscode.window.showErrorMessage(`File ${src} does not exist`);
 				}
@@ -126,10 +100,14 @@ export class vDbgPanel {
 				vscode.window.showErrorMessage(`Problem with source file ${src}: ${err}`);
 			}
 		}
-
+		let bpobj:Object = {topic:'__breakpoints__',data:vdbgs.breakpoints.map(bp => { 
+			let o = JSON.parse(JSON.stringify(bp.obj));
+			o.source = bp.uri+':'+bp.line;
+			return o;
+		})};
 		this._panel.title = 'Vdbg Window';
-		// // const stylesResetUri = this._panel.webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'reset.css'));
-		// // const stylesMainUri = this._panel.webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'vscode.css'));
+		const stylesResetUri = this._panel.webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'reset.css'));
+		const stylesMainUri = this._panel.webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'vscode.css'));
 		this._panel.webview.html = `
 <!DOCTYPE html>
 <html lang="en">
@@ -137,14 +115,18 @@ export class vDbgPanel {
 		<meta charset="UTF-8">
 		<meta name="viewport" content="width=device-width, initial-scale=1.0">
 		<title>Vdbg Window</title>
+		<link href="${stylesResetUri}" rel="stylesheet">
+		<link href="${stylesMainUri}" rel="stylesheet">
 	</head>
 	<body>
 <script type="module">
 let HANDLER = null;
 const OVERLOADS = {VSCODE:acquireVsCodeApi(), PARSERS:{}};
-[${jspaths.map(p => `"${p}"`).join(',')}].forEach(importpath => {
+[${jspaths.map(p => `"${this._panel?.webview.asWebviewUri(p)}"`).join(',')}].forEach(importpath => {
 	import(importpath)
-		.then(builtin => { if (builtin.load) HANDLER = builtin.load(OVERLOADS) })
+		.then(builtin => { if (builtin.load) HANDLER = builtin.load(OVERLOADS);
+			if (HANDLER) HANDLER(${JSON.stringify(bpobj)});
+		})
 		.catch(err => console.log('err',err));
 });
 window.addEventListener('message', event => {
@@ -153,8 +135,8 @@ window.addEventListener('message', event => {
 </script>
 	</body>
 </html>`;
+
 		this._panel.reveal(vscode.ViewColumn.Two);
-		
 	}
 
 	constructor(extensionUri: vscode.Uri) {
@@ -195,8 +177,8 @@ window.addEventListener('message', event => {
 				} else if (message.type == 'info') {
 					vscode.window.showInformationMessage(message.text);
 				} else if (message.type == 'vdbg_bp') {
-				} else if (message.type == 'exec' && this._session) {
-					this._session.customRequest('evaluate', {expression:`-exec ${message.expression}`, context:'repl'}).then(response => {
+				} else if (message.type == 'evaluate' && this._session) {
+					this._session.customRequest('evaluate', {expression:message.expression, context:'repl'}).then(response => {
 						if (message.topic) this.sendMessage({topic:message.topic,response:response});
 					});
 				}
@@ -220,10 +202,7 @@ window.addEventListener('message', event => {
 		}
 		this._panel = undefined;
 		vscode.window.showInformationMessage('Disposed vdbg')
-		let pths = [vscode.Uri.joinPath(this._extensionUri,'media','dynamic'),vscode.Uri.joinPath(this._extensionUri,'media','resources')];
-		pths.forEach(pth => {
-			if (fs.existsSync(pth.fsPath) && fs.statSync(pth.fsPath).isDirectory()) fs.rmSync(pth.fsPath, { recursive: true });
-		})
+		this.clearDynamicFolder();
 	}
 
 }

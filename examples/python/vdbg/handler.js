@@ -1,37 +1,26 @@
-import { setup_generic_map } from "https://cdn.jsdelivr.net/gh/vytools/jsutilities@v1.0.0/generic_map.js";
-const DRAWDATA = {};
-let MAPFUNCS = {};
-let VSCODE = null;
-let BREAKPOINTS = [];
+import { setup_generic_map } from "https://cdn.jsdelivr.net/gh/vytools/jsutilities@v1.0.2/generic_map.js";
+import sheet from 'https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css' assert { type: 'css' };
+document.adoptedStyleSheets = [sheet];
 
-export function initializer(contentdiv, vscode) {
-	MAPFUNCS = setup_generic_map(contentdiv, DRAWDATA);
-	contentdiv.addEventListener('click',function(ev) {
+export function load(OVERLOADS) {
+	document.body.style.padding = '0px';
+	document.body.style.margin = '0px';
+	document.body.insertAdjacentHTML('beforeend','<div class="content" style="position:absolute; width:100%; height:100%; overflow:hidden; padding:0px; margin:0px"></div>');
+	const content = document.querySelector('.content');
+	OVERLOADS.DRAWDATA = {plot:[], circles:[]};
+	OVERLOADS.MAPFUNCS = setup_generic_map(content, OVERLOADS.DRAWDATA);
+	window.onresize = OVERLOADS.MAPFUNCS.resize;
+	content.addEventListener('click',function(ev) {
 		if (ev.detail == 3) { // triple click
-			vscode.postMessage({type:'get_breakpoints'});
 		}
-	})
-	window.onresize = MAPFUNCS.resize;
-	if (vscode) VSCODE = vscode;
-}
+	});
 
-export function handler(data) {
-	if (!DRAWDATA.circles) DRAWDATA.circles = [];
-	if (!data || !data.topic) return
-	VSCODE.postMessage({type:'info',text:'i heard '+data.topic});
-	let vrbls = data.variables;
-	if (data.topic == 'yo') {
-		VSCODE.postMessage({type:'error',text:'yo response = '+JSON.stringify(data.response)});
-	} else if (data.topic == '__breakpoints__') {
-		BREAKPOINTS = data.data;
-		VSCODE.postMessage({type:'request', response_topic:'yo', command:'evaluate',
-			data:{expression:'count*2',context:'watch'}
-		});
-		// VSCODE.postMessage({type:'info',text:'i got breakpoints '+JSON.stringify(BREAKPOINTS)});
-	} else if (data.topic == 'topicB') {
-		let n = DRAWDATA.circles.length;
-		DRAWDATA.circles.push({draw_type:'circle', fillStyle:'red', 
-			x:vrbls.xy.x, y:vrbls.xy.y, radius:vrbls.xy.radius});
+	return function(data) {
+		console.log('**py',data)
+		// if (data?.topic == '__on_show_elements__') {
+		// 	OVERLOADS.VSCODE.postMessage({type:'info',text:JSON.stringify(data.response.result)});
+		// } else if (data?.topic == 'sample') {
+		// }
 	}
-	MAPFUNCS.draw();
+
 }

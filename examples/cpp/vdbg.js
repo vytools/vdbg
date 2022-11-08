@@ -12,8 +12,8 @@ export function load(OVERLOADS) {
 	window.onresize = OVERLOADS.MAPFUNCS.resize;
 	content.addEventListener('click',function(ev) {
 		if (ev.detail == 3) { // triple click
-			OVERLOADS.VSCODE.postMessage({type:'exec',topic:'__on_show_elements__',expression: "show print elements"});
-			// OVERLOADS.VSCODE.postMessage({type:'exec',topic:'__on_set_print_elements__',expression: "set print elements 200"});
+			OVERLOADS.VSCODE.postMessage({type:'evaluate',topic:'__on_show_elements__',expression: "-exec show print elements"});
+			// OVERLOADS.VSCODE.postMessage({type:'evaluate',topic:'__on_set_print_elements__',expression: "-exec set print elements 200"});
 			// OVERLOADS.VSCODE.postMessage({type:'get_breakpoints'});
 		}
 	});
@@ -22,16 +22,12 @@ export function load(OVERLOADS) {
 		if (data?.topic == '__on_show_elements__') {
 			OVERLOADS.VSCODE.postMessage({type:'info',text:JSON.stringify(data.response.result)});
 		} else if (data?.topic == 'sample') {
-			if (OVERLOADS.PARSERS.vdbg_cpp(data)) {
-				// VSCODE.postMessage({type:'info',text:`i got ${JSON.stringify(data.variables)} sample`});
-				OVERLOADS.DRAWDATA.circles.push({draw_type:'circle', fillStyle:'red', 
-					x:data.variables.x, y:data.variables.y, radius:4, scaleSizeToScreen:true});
-					OVERLOADS.MAPFUNCS.draw();
-			}
+			// VSCODE.postMessage({type:'info',text:`i got ${JSON.stringify(data.variables)} sample`});
+			OVERLOADS.DRAWDATA.circles.push({draw_type:'circle', fillStyle:'red', 
+				x:data.variables.x, y:data.variables.y, radius:4, scaleSizeToScreen:true});
+				OVERLOADS.MAPFUNCS.draw();
 		} else if (data?.topic == 'test') {
-			if (OVERLOADS.PARSERS.vdbg_cpp(data)) {
-				OVERLOADS.VSCODE.postMessage({type:'info',text:`successfully parsed test`});
-			}
+			OVERLOADS.VSCODE.postMessage({type:'info',text:`successfully parsed test`});
 		} else if (OVERLOADS.PARSERS.hasOwnProperty(data?.topic)) {
 			OVERLOADS.PARSERS[data.topic](data);
 		} else {

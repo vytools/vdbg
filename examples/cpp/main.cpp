@@ -12,11 +12,9 @@ double powr(double x) { return std::pow(x+1.2,8) - 1; }
 /*<vdbg_js 
 export function load(OVERLOADS) {
   OVERLOADS.PARSERS.fullfunc = function(data) {
-			if (OVERLOADS.PARSERS.vdbg_cpp(data)) {
-				OVERLOADS.DRAWDATA.plot = {draw_type:'polygon', strokeStyle:'green', lineWidth:4,
-					points:data.variables.xy, scaleSizeToScreen:true, draw_toggle:'plot'};
-				OVERLOADS.MAPFUNCS.draw();
-			}
+      OVERLOADS.DRAWDATA.plot = {draw_type:'polygon', strokeStyle:'green', lineWidth:4,
+        points:data.variables.xy, scaleSizeToScreen:true, draw_toggle:'plot'};
+      OVERLOADS.MAPFUNCS.draw();
   }
 }
 vdbg_js>*/
@@ -53,6 +51,7 @@ void some_stuff() {
   // <vdbg_bp {"name":"test","topic":"test","variables":{"j":"j"}} vdbg_bp>
   std::string x = "hey der bub";
   // <vdbg_bp {"name":"junk","topic":"xx","variables":{"x":"x"}} vdbg_bp>
+
   x += "-";
 }
 
