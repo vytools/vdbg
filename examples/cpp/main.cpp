@@ -50,8 +50,8 @@ void some_stuff() {
  
   // <vdbg_bp {"name":"test","topic":"test","variables":{"j":"j"}} vdbg_bp>
   std::string x = "hey der bub";
-  // <vdbg_bp {"name":"junk","topic":"xx","variables":{"x":"x"}} vdbg_bp>
 
+  // <vdbg_bp {"name":"junk","topic":"xx","variables":{"x":"x"}} vdbg_bp>
   x += "-";
 }
 

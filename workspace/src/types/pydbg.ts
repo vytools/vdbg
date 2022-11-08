@@ -10,8 +10,7 @@ export class PydbgType extends vdbg_sources.LanguageDbgType {
         if (session.workspaceFolder) {
             let sources = vdbg_sources.dive(session.workspaceFolder.uri.fsPath,  /.*\.py/i);
             this._vdbgs = vdbg_sources.search(sources);
-            let self = this;
-            vdbg_sources.adjust_breakpoints(this._vdbgs.breakpoints, session, () => { callback(self) });
+            callback(this);
         }
     }
 

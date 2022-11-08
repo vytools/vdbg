@@ -45,8 +45,7 @@ export class CppdbgType extends vdbg_sources.LanguageDbgType {
 			try {
                 let sources = response.result.split(/\n/g).join(', ').split(', ');
 				this._vdbgs = vdbg_sources.search(sources);
-                let self = this;
-				vdbg_sources.adjust_breakpoints(this._vdbgs.breakpoints, session, () => { callback(self) });
+                callback(this);
 			} catch(err) {
 				vscode.window.showErrorMessage('vdbg error: Failed to find breakpoints '+err);
 				return false;

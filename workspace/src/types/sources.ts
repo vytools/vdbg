@@ -41,33 +41,6 @@ export class LanguageDbgType {
     }
 }
 
-export function adjust_breakpoints(bps:Array<Vbpobj>, session:vscode.DebugSession, callback:Function) {
-	let startBreakpoints = vscode.debug.breakpoints.map(bp => bp);
-	vscode.debug.removeBreakpoints(vscode.debug.breakpoints);
-	let n = bps.length;
-	const retrieve = (bp:Vbpobj, breakpoint:vscode.Breakpoint, session:vscode.DebugSession) => {
-		session.getDebugProtocolBreakpoint(breakpoint).then((adjusted:any) => {
-			if (adjusted) {
-				vscode.debug.removeBreakpoints([breakpoint]);
-				bp.line = adjusted.line;
-				n -= 1;
-				if (n == 0) {
-					vscode.debug.addBreakpoints(startBreakpoints);
-					callback();
-				}
-			} else {
-				setTimeout(() => {retrieve(bp, breakpoint, session);}, 1000); // give it a second
-			}
-		});
-	}
-	bps.forEach(bp => {
-		let loc:vscode.Location = new vscode.Location(bp.uri, new vscode.Position(bp.line-1, 0)); // vscode breakpoint offset by 1
-		let bpn:vscode.SourceBreakpoint = new vscode.SourceBreakpoint(loc, true);
-		vscode.debug.addBreakpoints([bpn]);
-		setTimeout(() => {retrieve(bp, bpn, session);}, 1000); // give it a second
-	});
-}
-
 export function search(sources:Array<string>):Vdbg {
 	let vdbg:Vdbg = {breakpoints:[], snips:[]};
 	sources.forEach(function(pth: string) { // For every file in the list
@@ -88,7 +61,7 @@ export function search(sources:Array<string>):Vdbg {
 						matches.forEach((match:string) => {
 							try {
 								let m = JSON.parse(match.replace('<vdbg_bp','').replace('vdbg_bp>',''));
-								vdbg.breakpoints.push({file:path.basename(pth),uri:uri,line:linecount,obj:m});
+								vdbg.breakpoints.push({file:path.basename(pth),uri:uri,line:linecount+1,obj:m});
 							} catch(err) {
 								console.error(`Error parsing sources: ${err}`);
 							}
