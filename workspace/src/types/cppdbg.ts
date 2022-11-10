@@ -5,6 +5,7 @@ const cppstr = function(key:string,stri:string) {
     let newstr = stri.slice(stri.indexOf('=') + 1).trim();
     if (newstr.startsWith('"')) return newstr;
     if (!isNaN(parseFloat(newstr))) return parseFloat(newstr);
+    newstr = newstr.replace(/std::[a-zA-Z0-9_\-]+ of length 0, capacity 0/g,'[]'); // replace emptys
     newstr = newstr.replace(/std::[a-zA-Z0-9_\-,\s]+= /g,'');														// console.log('-A-',newstr);
     newstr = newstr.replace(/\[("[\w]+")\] = /g,'$1:'); // for std::map when a string is used?						// console.log('-B-',newstr);
     newstr = newstr.replace(/\[([0-9]+)\] = /g,'');		// for std::vector, std::list, std::tuple and std::pair?	// console.log('-C-',newstr);
@@ -17,7 +18,7 @@ const cppstr = function(key:string,stri:string) {
         let c = newstr[ii];
         if (c == '{' && ii < newstr.length-1) {
             started = true;
-            let isobj = newstr[ii+1]=='"';
+            let isobj = /^"[\w\|]+":/.test(newstr.slice(ii+1));
             openindex.push(isobj);
             newstr2 += (isobj) ? '{' : '[';
         } else if (c == '}') {

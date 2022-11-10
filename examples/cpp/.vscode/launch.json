@@ -28,7 +28,8 @@
                 }
             ],
             "vdbg":{
-                "sources":[
+                "context":"mysigmoidplotter",
+                "scripts":[
                     {"src":"vdbg.js","dst":"vdbg.js"}
                 ]
             }

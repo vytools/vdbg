@@ -63,7 +63,7 @@ export class vDbgPanel {
 
 		let folderUri:vscode.WorkspaceFolder = this._session.workspaceFolder;
 		let vdbgConfig = this._session.configuration.vdbg;
-		if (!vdbgConfig || !vdbgConfig.sources) {
+		if (!vdbgConfig || !vdbgConfig.scripts) {
 			vscode.window.showErrorMessage(`vdbg error: No "vdbg" field in launch configuration ${JSON.stringify(this._session.configuration)}`);
 			return;
 		}
@@ -81,8 +81,8 @@ export class vDbgPanel {
 		}
 
 		// - 2. load from first item in launch.configuration.vdbg.sources
-		for (var ii = 0; ii < vdbgConfig.sources.length; ii++) {
-			let resource = vdbgConfig.sources[ii];
+		for (var ii = 0; ii < vdbgConfig.scripts.length; ii++) {
+			let resource = vdbgConfig.scripts[ii];
 			let src = vscode.Uri.joinPath(folderUri.uri, resource.src).fsPath;
 			let dst = vscode.Uri.joinPath(dynamicFolder, resource.dst);
 			if (dst.fsPath.indexOf('..') > -1) continue;
@@ -100,14 +100,16 @@ export class vDbgPanel {
 				vscode.window.showErrorMessage(`Problem with source file ${src}: ${err}`);
 			}
 		}
-		let bpobj:Object = {topic:'__breakpoints__',data:vdbgs.breakpoints.map(bp => { 
+		let bpobj:Object = vdbgs.breakpoints.map(bp => { 
 			let o = JSON.parse(JSON.stringify(bp.obj));
-			o.source = bp.uri+':'+bp.line;
+			o.path = bp.uri.fsPath;
+			o.line = bp.line;
 			return o;
-		})};
+		});
 		this._panel.title = 'Vdbg Window';
-		const stylesResetUri = this._panel.webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'reset.css'));
-		const stylesMainUri = this._panel.webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'vscode.css'));
+		const stylesResetUri = this._panel.webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'styles', 'reset.css'));
+		const stylesBootstrapUri = this._panel.webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'styles', 'bootstrap.min.css'));
+		const stylesMainUri = this._panel.webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'styles', 'vscode.css'));
 		this._panel.webview.html = `
 <!DOCTYPE html>
 <html lang="en">
@@ -117,20 +119,25 @@ export class vDbgPanel {
 		<title>Vdbg Window</title>
 		<link href="${stylesResetUri}" rel="stylesheet">
 		<link href="${stylesMainUri}" rel="stylesheet">
+		<link href="${stylesBootstrapUri}" rel="stylesheet">
 	</head>
 	<body>
 <script type="module">
-let HANDLER = null;
-const OVERLOADS = {VSCODE:acquireVsCodeApi(), PARSERS:{}};
+const OVERLOADS = ${JSON.stringify(vdbgConfig)};
+OVERLOADS.BREAKPOINTS = ${JSON.stringify(bpobj)};
+OVERLOADS.VSCODE = acquireVsCodeApi();
+OVERLOADS.PARSERS = {};
 [${jspaths.map(p => `"${this._panel?.webview.asWebviewUri(p)}"`).join(',')}].forEach(importpath => {
 	import(importpath)
-		.then(builtin => { if (builtin.load) HANDLER = builtin.load(OVERLOADS);
-			if (HANDLER) HANDLER(${JSON.stringify(bpobj)});
-		})
+		.then(builtin => { if (builtin.load) builtin.load(OVERLOADS); })
 		.catch(err => console.log('err',err));
 });
 window.addEventListener('message', event => {
-	if (event?.data && HANDLER) HANDLER(event.data);
+	if (!OVERLOADS.HANDLER) {
+		OVERLOADS.VSCODE.postMessage({type:'error',text:'vydbg HANDLER was not defined.'})
+	} else if (event?.data) {
+		OVERLOADS.HANDLER(event.data);
+	}
 });
 </script>
 	</body>
@@ -176,6 +183,32 @@ window.addEventListener('message', event => {
 					vscode.window.showErrorMessage(message.text);
 				} else if (message.type == 'info') {
 					vscode.window.showInformationMessage(message.text);
+				} else if (message.type == 'add_breakpoints') {
+					vscode.debug.addBreakpoints(message.breakpoints.map((bp:any) => {
+						let uri = vscode.Uri.file(bp.path);
+						let loc:vscode.Location = new vscode.Location(uri, new vscode.Position(bp.line, 0));
+						return new vscode.SourceBreakpoint(loc, true, bp.condition, bp.hitCondition, bp.logMessage);
+					}));
+				} else if (message.type == 'remove_breakpoints') {
+					let bpx = vscode.debug.breakpoints.filter(bp => {
+						// let line = bp.location.range.start.line; // typescript cant imagine that bp is a vscode.SourceBreakpoint
+						// let pth = bp.location.uri.fsPath;
+						let line = null, pth = null;
+						for (const [key,value] of Object.entries(bp)) {
+							if (key == 'location') {
+								line = value.range.start.line;
+								pth = value.uri.fsPath;
+							}
+						};
+						for (var ii = 0; ii < message.breakpoints.length; ii++) {
+							let bpr = message.breakpoints[ii];
+							if (pth == bpr.path) console.log(bpr.line,line)
+							if (pth == bpr.path && bpr.line == line) return true;
+						}
+						return false;
+					});
+					console.log('Attempting to remove breakpoints:',bpx);
+					vscode.debug.removeBreakpoints(bpx);
 				} else if (message.type == 'vdbg_bp') {
 				} else if (message.type == 'evaluate' && this._session) {
 					this._session.customRequest('evaluate', {expression:message.expression, context:'repl'}).then(response => {

@@ -1,6 +1,4 @@
-import { setup_generic_map } from "https://cdn.jsdelivr.net/gh/vytools/jsutilities@v1.0.2/generic_map.js";
-import sheet from 'https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css' assert { type: 'css' };
-document.adoptedStyleSheets = [sheet];
+import { setup_generic_map } from "../../utilities/generic_map.js";
 
 export function load(OVERLOADS) {
 	document.body.style.padding = '0px';

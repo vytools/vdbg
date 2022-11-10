@@ -1,0 +1,22 @@
+/* LARGELY FROM: https://stackoverflow.com/questions/28767221/flexbox-resizing */
+
+flex {display: flex; overflow: hidden;}
+flex.h {flex-direction: row;}
+flex.v {flex-direction: column;}
+flexitem {overflow: hidden;}
+flex > flexresizer {
+  flex: 0 0 10px;
+	background-color: #aaa;
+	background-repeat: no-repeat;
+  background-position: center;
+}
+
+flex.h > flexresizer {
+	cursor: ew-resize;
+	background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='30'><path d='M2 0 v30 M5 0 v30 M8 0 v30' fill='none' stroke='black'/></svg>");
+}
+
+flex.v > flexresizer {
+	cursor: ns-resize;
+	background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='30' height='10'><path d='M0 2 h30 M0 5 h30 M0 8 h30' fill='none' stroke='black'/></svg>");
+}

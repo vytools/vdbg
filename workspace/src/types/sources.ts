@@ -84,7 +84,7 @@ export function dive(dir: string | undefined, pattern: RegExp):Array<string> {
 	list.forEach(function(file: string) { 												// For every file in the list
 		const pth = path.join(dir,file);												// Full path of that file
 		const stat = fs.statSync(pth);													// Get the file's stats
-		if (stat.isDirectory() && ['.git','.hg','__pycache__'].indexOf(file) == -1) {	// If the file is a directory
+		if (stat.isDirectory() && ['.git','.hg','__pycache__','.pycache','node_modules'].indexOf(file) == -1) {	// If the file is a directory
 			source = source.concat(dive(pth, pattern));								    // Dive into the directory
 		} else if (stat.isFile() && pattern.test(pth)) {
 			source.push(pth);

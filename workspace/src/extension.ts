@@ -16,6 +16,9 @@ export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push( vscode.debug.onDidStartDebugSession(session => {
 		VDBG?.setSession(session);
 	}) );
+	context.subscriptions.push( vscode.debug.onDidTerminateDebugSession(session => {
+		state = INIT_STATE;
+	}) );
 	// context.subscriptions.push( vscode.debug.onDidReceiveDebugSessionCustomEvent(ev => {  }) );
 	// context.subscriptions.push( vscode.debug.onDidChangeBreakpoints(ev => { }) );
 	vscode.debug.registerDebugAdapterTrackerFactory('*', {
