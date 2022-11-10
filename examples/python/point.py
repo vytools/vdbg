@@ -16,5 +16,4 @@ class Point:
 p = Point()
 def point(count):
   p.step()
-  # <vdbg_bp {"name":"bkpntA","topic":"topicA","variables":{"count2":"count*2","p":"p"}} vdbg_bp>
-  return p; #{"x":p.x, "y":p.y, "radius":p.radius}
+  return p;

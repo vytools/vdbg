@@ -1,10 +1,10 @@
 {
 	"name": "vdbg-debugger",
 	"description": "Visual Debugger - An extensible visual debugger",
-	"version": "0.0.2",
+	"version": "0.0.3",
 	"publisher": "vytools",
 	"private": true,
-	"icon":"media/logo128.png",
+	"icon": "media/logo128.png",
 	"license": "MIT",
 	"repository": {
 		"type": "git",
@@ -47,5 +47,7 @@
 		"eslint": "^7.21.0",
 		"typescript": "^4.5.5"
 	},
-	"dependencies": {}
+	"dependencies": {
+		"json5": "^2.2.1"
+	}
 }

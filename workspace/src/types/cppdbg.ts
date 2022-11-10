@@ -45,7 +45,8 @@ export class CppdbgType extends vdbg_sources.LanguageDbgType {
         session.customRequest('evaluate', {expression:`-exec info sources`, frameId:frameId, context:'repl'}).then(response => {
 			try {
                 let sources = response.result.split(/\n/g).join(', ').split(', ');
-				this._vdbgs = vdbg_sources.search(sources);
+				this._vdbgs = vdbg_sources.search(sources)
+                this._vdbgs.breakpoints.forEach(bp => bp.line++); // add one because gdb uses 1 based indexing 
                 callback(this);
 			} catch(err) {
 				vscode.window.showErrorMessage('vdbg error: Failed to find breakpoints '+err);
@@ -54,25 +55,22 @@ export class CppdbgType extends vdbg_sources.LanguageDbgType {
 		});
     }
 
-    public check_breakpoint(bpsource:vdbg_sources.stackTraceBody, callback:Function) {
-        for (var ii = 0; ii < this._vdbgs.breakpoints.length; ii++) {
-            let bp = this._vdbgs.breakpoints[ii];
-            if (bp.uri.path == bpsource.source.path && bp.line == bpsource.line) {
-                if (bp?.obj?.variables) {
-                    let n = Object.keys(bp.obj.variables).length;
-                    let obj = JSON.parse(JSON.stringify(bp.obj));
-                    for (const [key, value] of Object.entries(obj.variables)) {
-                        let req = {expression:`-exec print ${value}`, frameId:bpsource.id, context:'repl'};
-                        this?._session?.customRequest('evaluate', req).then(response => {
-                            obj.variables[key] = cppstr(key,response.result);
-                            n -= 1;
-                            if (n == 0) callback(obj);
-                        });
-                    }
-                } else {
-                    callback(bp.obj);
-                }
+    public eval_breakpoint(bp:vdbg_sources.Vbreakpoint, frameId:number|undefined, callback:Function) {
+        if (bp.variables) {
+            let n = Object.keys(bp.variables).length;
+            let obj = JSON.parse(JSON.stringify(bp));
+            for (const [key, value] of Object.entries(obj.variables)) {
+                let req:any = {expression:`-exec print ${value}`, context:'repl'};
+                if (frameId) req.frameId = frameId;
+                this?._session?.customRequest('evaluate', req).then(response => {
+                    obj.variables[key] = cppstr(key,response.result);
+                    n -= 1;
+                    if (n == 0) callback(obj);
+                });
             }
+        } else {
+            callback(bp);
         }
     }
+
 }

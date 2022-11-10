@@ -154,6 +154,7 @@ window.addEventListener('message', event => {
 			vscode.ViewColumn.Two,
 			{
 				enableScripts: true,
+				retainContextWhenHidden: true,
 				localResourceRoots: [vscode.Uri.joinPath(extensionUri, 'media')]
 			},
 		);
@@ -202,7 +203,6 @@ window.addEventListener('message', event => {
 						};
 						for (var ii = 0; ii < message.breakpoints.length; ii++) {
 							let bpr = message.breakpoints[ii];
-							if (pth == bpr.path) console.log(bpr.line,line)
 							if (pth == bpr.path && bpr.line == line) return true;
 						}
 						return false;
@@ -210,6 +210,7 @@ window.addEventListener('message', event => {
 					console.log('Attempting to remove breakpoints:',bpx);
 					vscode.debug.removeBreakpoints(bpx);
 				} else if (message.type == 'vdbg_bp') {
+					if (message.data) this._type?.eval_breakpoint(message.data,undefined,(obj:any) => {this.sendMessage(obj)});
 				} else if (message.type == 'evaluate' && this._session) {
 					this._session.customRequest('evaluate', {expression:message.expression, context:'repl'}).then(response => {
 						if (message.topic) this.sendMessage({topic:message.topic,response:response});

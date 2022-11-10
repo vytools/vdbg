@@ -1,6 +1,7 @@
 import { setup_generic_map } from "../../utilities/generic_map.js";
 
 export function load(OVERLOADS) {
+	console.log('----reload!!')
 	document.body.style.padding = '0px';
 	document.body.style.margin = '0px';
 	document.body.insertAdjacentHTML('beforeend','<div class="content" style="position:absolute; width:100%; height:100%; overflow:hidden; padding:0px; margin:0px"></div>');
@@ -13,12 +14,17 @@ export function load(OVERLOADS) {
 		}
 	});
 
-	return function(data) {
-		console.log('**py',data)
-		// if (data?.topic == '__on_show_elements__') {
-		// 	OVERLOADS.VSCODE.postMessage({type:'info',text:JSON.stringify(data.response.result)});
-		// } else if (data?.topic == 'sample') {
-		// }
+	OVERLOADS.PARSERS.topicB = function(data) {
+		OVERLOADS.DRAWDATA.circles.push({draw_type:'circle', strokeStyle:'green', lineWidth:4,
+		  x:data.variables.x, y:data.variables.y, radius:data.variables.radius,
+		  scaleSizeToScreen:true});
+	}
+
+	OVERLOADS.HANDLER = function(data) {
+		if (OVERLOADS.PARSERS.hasOwnProperty(data?.topic)) {
+			OVERLOADS.PARSERS[data.topic](data);
+			OVERLOADS.MAPFUNCS.draw();
+		}
 	}
 
 }

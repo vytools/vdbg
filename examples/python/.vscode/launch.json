@@ -13,7 +13,7 @@
             "justMyCode": true,
             "vdbg":{
                 "scripts":[
-                    {"src":"vdbg/handler.js","dst":"handler.js"}
+                    {"src":"vdbg.js","dst":"handler.js"}
                 ]
             }
         }
