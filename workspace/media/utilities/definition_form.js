@@ -218,7 +218,7 @@ export function create(container, definitions, def, obj, functions) {
     while(container.firstChild){ container.removeChild(container.firstChild);}
     container.insertAdjacentHTML('beforeend',`
         <input class="upload" type="file" style="display: none;"/>
-        <div style="padding:5px">
+        <div class="definition_form_buttons" style="padding:5px">
             <button class="btn btn-sm btn-dark upload">Upload</button>
             ${(functions.save) ? '<button class="btn btn-sm btn-dark upload">Save</button>' : ''}
         </div>

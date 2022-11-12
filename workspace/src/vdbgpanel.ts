@@ -106,10 +106,11 @@ export class vDbgPanel {
 			o.line = bp.line;
 			return o;
 		});
+		let panel = this._panel;
 		this._panel.title = 'Vdbg Window';
-		const stylesResetUri = this._panel.webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'styles', 'reset.css'));
-		const stylesBootstrapUri = this._panel.webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'styles', 'bootstrap.min.css'));
-		const stylesMainUri = this._panel.webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'styles', 'vscode.css'));
+		let styles = ['reset.css','bootstrap.min.css','flex.css','vscode.css'].map(f => {
+			return `<link href="${panel.webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'styles', f))}" rel="stylesheet">`;
+		}).join('\n');
 		this._panel.webview.html = `
 <!DOCTYPE html>
 <html lang="en">
@@ -117,9 +118,7 @@ export class vDbgPanel {
 		<meta charset="UTF-8">
 		<meta name="viewport" content="width=device-width, initial-scale=1.0">
 		<title>Vdbg Window</title>
-		<link href="${stylesResetUri}" rel="stylesheet">
-		<link href="${stylesMainUri}" rel="stylesheet">
-		<link href="${stylesBootstrapUri}" rel="stylesheet">
+		${styles}
 	</head>
 	<body>
 <script type="module">
