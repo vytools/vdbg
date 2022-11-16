@@ -27,11 +27,20 @@ struct XY {
 struct XY1 {
     double x;
     double y;
-    std::vector<int> z = {0,1,2};
+    bool h = false;
+    std::vector<int8_t> z = {};
+    XY1(double x_, double y_) {
+      x = x_;
+      y = y_;
+      z.clear();
+      for (int ii=0; ii<256; ii++) {
+        z.push_back(static_cast<int8_t>(ii));
+      }
+    }
 };
 
 struct XY2 {
-  std::vector<XY1> z;
+  std::vector<XY1> z = {};
 };
 
 struct XY3 {
@@ -41,14 +50,16 @@ struct XY3 {
 
 void some_stuff() {
   std::unordered_map<std::string, XY1> k;
-  k["hi"] = {1.1, 2.2};
-  k["bye"] = {3.3, 4.4};
+  XY1 zz(3.3, 4.4);
+  k.insert({"hi",XY1(1.0,2.0)});
+  k.insert({"bye",XY1(3.3,4.4)});
   std::tuple<std::unordered_map<std::string, XY1>,int> h = {k, 42};
   std::vector<std::tuple<std::unordered_map<std::string, XY1>,int>> j;
   j.push_back(h);
   j.push_back(h);
- 
-  // <vdbg_bp {"name":"test","topic":"test","variables":{"j":"j"}} vdbg_bp>
+  uint8_t x1 = 98;
+  bool x2 = true;
+  // <vdbg_bp {"name":"test","topic":"test","variables":{"j":"j","x1":"x1","x2":"x2"}} vdbg_bp>
   std::string x = "hey der bub";
 
   // <vdbg_bp {"name":"junk","topic":"xx","variables":{"x":"x"}} vdbg_bp>

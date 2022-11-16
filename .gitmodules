@@ -1,0 +1,3 @@
+[submodule "workspace/media/vyjs"]
+	path = workspace/media/vyjs
+	url = git@github.com:vytools/vyjs.git

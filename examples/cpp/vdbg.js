@@ -1,4 +1,4 @@
-import { setup_generic_map } from "../../utilities/generic_map.js";
+import { setup_generic_map } from "../../vyjs/js/generic_map.js";
 
 export function load(OVERLOADS) {
 	
@@ -28,7 +28,12 @@ export function load(OVERLOADS) {
 				x:data.variables.x, y:data.variables.y, radius:4, scaleSizeToScreen:true});
 				OVERLOADS.MAPFUNCS.draw();
 		} else if (data?.topic == 'test') {
-			OVERLOADS.VSCODE.postMessage({type:'info',text:`successfully parsed test`});
+			console.log('data',data)
+			if (data.variables.x1 == 98 && data.variables.x2 == true && typeof(data.variables.j) == 'object') {
+				OVERLOADS.VSCODE.postMessage({type:'info',text:`successfully parsed test`});
+			} else {
+				OVERLOADS.VSCODE.postMessage({type:'error',text:`failed to parse test`});
+			}
 		} else if (OVERLOADS.PARSERS.hasOwnProperty(data?.topic)) {
 			OVERLOADS.PARSERS[data.topic](data);
 		} else {

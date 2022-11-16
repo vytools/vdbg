@@ -4,14 +4,25 @@ import * as vscode from 'vscode';
 const cppstr = function(key:string,stri:string) {
     let newstr = stri.slice(stri.indexOf('=') + 1).trim();
     if (newstr.startsWith('"')) return newstr;
+    if (newstr.indexOf('{') == -1) {
+        newstr = newstr.split(/:/g).pop() || '';
+    }
+    if (newstr == 'true') return true;
+    if (newstr == 'false') return false;
     if (!isNaN(parseFloat(newstr))) return parseFloat(newstr);
     newstr = newstr.replace(/std::[a-zA-Z0-9_\-]+ of length 0, capacity 0/g,'[]'); // replace emptys
-    newstr = newstr.replace(/std::[a-zA-Z0-9_\-,\s]+= /g,'');														// console.log('-A-',newstr);
-    newstr = newstr.replace(/\[("[\w]+")\] = /g,'$1:'); // for std::map when a string is used?						// console.log('-B-',newstr);
-    newstr = newstr.replace(/\[([0-9]+)\] = /g,'');		// for std::vector, std::list, std::tuple and std::pair?	// console.log('-C-',newstr);
-    newstr = newstr.replace(/({|(, ))((\w+)) = /g,'$1"$3":');	// put quotes around variable names					// console.log('-D-',newstr);
-    newstr = newstr.replace(/:([a-zA-Z_]\w+)/g,':"$1"');	// put quotes around alphanumeric values	            // console.log('-E-',newstr);
-    
+    newstr = newstr.replace(/std::[a-zA-Z0-9_\-,\s]+= /g,'');
+    // console.log('-A-',newstr);
+    newstr = newstr.replace(/\[("[\w]+")\] = /g,'$1:'); // for std::map when a string is used?
+    // console.log('-B-',newstr);
+    newstr = newstr.replace(/\[([0-9]+)\] = /g,'');		// for std::vector, std::list, std::tuple and std::pair?
+    // console.log('-C-',newstr);
+    newstr = newstr.replace(/({|(, ))((\w+)) = /g,'$1"$3":');	// put quotes around variable names
+    // console.log('-D-',newstr);
+    newstr = newstr.replace(/:([a-zA-Z_]\w+)/g,(a,b) => {return (a==':true' || a==':false') ? a : `:"${b}"`});	// put quotes around alphanumeric values
+    // console.log('-E-',newstr);
+    newstr = newstr.replace(/([0-9]+) '.{1,4}'/g,'$1');	// uint8_t and int8_t have some kind of char string after them
+    // console.log('-F-',newstr)
     // change {} to [] for arrays
     let openindex:Array<Boolean> = [], newstr2 = '', started = false;
     for (var ii = 0; ii < newstr.length; ii++) {
@@ -26,14 +37,15 @@ const cppstr = function(key:string,stri:string) {
         } else if (started) {
             newstr2 += c;
         }
-    };   // console.log('-F-',newstr2);
+    };   
     try {
+        // console.log('-G-',newstr2,JSON.parse(newstr2));
         return JSON.parse(newstr2);
     } catch(err) {
         // OVERLOADS.VSCODE.postMessage({type:'error',text:`Failed to parse ${key} see console log for details`});
         console.log('Failed to parse string as json, input: \n'+stri)
         console.log('Failed to parse string as json, output: \n'+newstr2)
-        return stri;
+        return newstr2;
     }
 }
 

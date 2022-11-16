@@ -108,8 +108,11 @@ export class vDbgPanel {
 		});
 		let panel = this._panel;
 		this._panel.title = 'Vdbg Window';
-		let styles = ['reset.css','bootstrap.min.css','flex.css','vscode.css'].map(f => {
+		let styles = ['reset.css','bootstrap.min.css','vscode.css'].map(f => {
 			return `<link href="${panel.webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'styles', f))}" rel="stylesheet">`;
+		}).join('\n');
+		styles += ['flex.css'].map(f => {
+			return `<link href="${panel.webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'vyjs', 'css', f))}" rel="stylesheet">`;
 		}).join('\n');
 		this._panel.webview.html = `
 <!DOCTYPE html>

@@ -68,11 +68,12 @@ export function search(sources:Array<string>):Vdbg {
 					let matches = line.match( /<vdbg_bp([\s\S]*?)vdbg_bp>/gm);
 					if (matches) {
 						matches.forEach((match:string) => {
+							let match2 = match.replace('<vdbg_bp','').replace('vdbg_bp>','');
 							try {
-								let m = JSON.parse(match.replace('<vdbg_bp','').replace('vdbg_bp>',''));
+								let m = JSON.parse(match2);
 								vdbg.breakpoints.push({file:path.basename(pth),uri:uri,line:linecount+1,obj:m}); // breakpoint at line after (linecount+1)
 							} catch(err) {
-								console.error(`Error parsing sources: ${err}`);
+								vscode.window.showErrorMessage(`Invalid vdbg breakpoint at ${pth} line ${linecount}: ${match2}`);
 							}
 						});
 					}
