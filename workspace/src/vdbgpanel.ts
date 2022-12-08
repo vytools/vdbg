@@ -69,18 +69,33 @@ export class vDbgPanel {
 		}
 		let vdbgs:vdbg_sources.Vdbg = this._type.get_vdbg();
 		let jspaths:Array<vscode.Uri> = [];
-
-		// - 1. load from embedded <vdbg_js ... vdb_js> tags
 		this.clearDynamicFolder();
 		let dynamicFolder = vscode.Uri.joinPath(this._extensionUri, 'media', 'resources', makeid());
 		if (!fs.existsSync(dynamicFolder.fsPath)) fs.mkdirSync(dynamicFolder.fsPath, { recursive: true });
+
+		// - 1. load from items in launch.configuration.vdbg.addon
+		let addOnFolder = vscode.Uri.joinPath(this._extensionUri, 'media', 'addon');
+		if (vdbgConfig.addon) {
+			for (const [key,val] of Object.entries(vdbgConfig.addon)) {
+				try {
+					let src = vscode.Uri.joinPath(addOnFolder, key+".js");
+					jspaths.push(src);
+				} catch(err) {
+					vscode.window.showErrorMessage(`vdbg error: addon "${key}" does not exist`);
+
+				}
+			}
+		}
+
+		// - 2. load from embedded <vdbg_js ... vdb_js> tags
 		for (var ii = 0; ii < vdbgs.snips.length; ii++) {
 			let dst = vscode.Uri.joinPath(dynamicFolder, makeid()+'.js');
 			fs.writeFileSync(dst.fsPath, vdbgs.snips[ii],{encoding:'utf8'});
 			jspaths.push(dst);
 		}
 
-		// - 2. load from first item in launch.configuration.vdbg.sources
+		
+		// - 3. save items in launch.configuration.vdbg.scripts and load the first one
 		for (var ii = 0; ii < vdbgConfig.scripts.length; ii++) {
 			let resource = vdbgConfig.scripts[ii];
 			let src = vscode.Uri.joinPath(folderUri.uri, resource.src).fsPath;
@@ -100,6 +115,7 @@ export class vDbgPanel {
 				vscode.window.showErrorMessage(`Problem with source file ${src}: ${err}`);
 			}
 		}
+
 		let bpobj:Object = vdbgs.breakpoints.map(bp => { 
 			let o = JSON.parse(JSON.stringify(bp.obj));
 			o.path = bp.uri.fsPath;
@@ -107,7 +123,7 @@ export class vDbgPanel {
 			return o;
 		});
 		let panel = this._panel;
-		this._panel.title = 'Vdbg Window';
+		this._panel.title = 'vdbg';
 		let styles = ['reset.css','bootstrap.min.css','vscode.css'].map(f => {
 			return `<link href="${panel.webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'styles', f))}" rel="stylesheet">`;
 		}).join('\n');
@@ -120,7 +136,6 @@ export class vDbgPanel {
 	<head>
 		<meta charset="UTF-8">
 		<meta name="viewport" content="width=device-width, initial-scale=1.0">
-		<title>Vdbg Window</title>
 		${styles}
 	</head>
 	<body>
@@ -129,11 +144,15 @@ const OVERLOADS = ${JSON.stringify(vdbgConfig)};
 OVERLOADS.BREAKPOINTS = ${JSON.stringify(bpobj)};
 OVERLOADS.VSCODE = acquireVsCodeApi();
 OVERLOADS.PARSERS = {};
-[${jspaths.map(p => `"${this._panel?.webview.asWebviewUri(p)}"`).join(',')}].forEach(importpath => {
-	import(importpath)
-		.then(builtin => { if (builtin.load) builtin.load(OVERLOADS); })
+const scripts = [${jspaths.map(p => `"${this._panel?.webview.asWebviewUri(p)}"`).join(',')}];
+const load_next_script = function() {
+	if (scripts.length > 0) {
+		import(scripts.shift())
+		.then(builtin => { if (builtin.load) builtin.load(OVERLOADS); load_next_script(); })
 		.catch(err => console.log('err',err));
-});
+	}
+}
+load_next_script();
 window.addEventListener('message', event => {
 	if (!OVERLOADS.HANDLER) {
 		OVERLOADS.VSCODE.postMessage({type:'error',text:'vydbg HANDLER was not defined.'})
@@ -152,7 +171,7 @@ window.addEventListener('message', event => {
 		this._extensionUri = extensionUri;
 		this._panel = vscode.window.createWebviewPanel(
 			this.viewType,
-			'Vdbg Window',
+			'vdbg',
 			vscode.ViewColumn.Two,
 			{
 				enableScripts: true,
@@ -190,7 +209,7 @@ window.addEventListener('message', event => {
 					vscode.debug.addBreakpoints(message.breakpoints.map((bp:any) => {
 						let uri = vscode.Uri.file(bp.path);
 						let loc:vscode.Location = new vscode.Location(uri, new vscode.Position(bp.line, 0));
-						return new vscode.SourceBreakpoint(loc, true, bp.condition, bp.hitCondition, bp.logMessage);
+						return new vscode.SourceBreakpoint(loc, !bp.disabled, bp.condition, bp.hitCondition, bp.logMessage);
 					}));
 				} else if (message.type == 'remove_breakpoints') {
 					let bpx = vscode.debug.breakpoints.filter(bp => {

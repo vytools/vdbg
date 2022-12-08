@@ -10,7 +10,7 @@
             "request": "launch",
             "program": "${workspaceFolder}/build/bisection",
             "args": [],
-            "stopAtEntry": false,
+            "stopAtEntry": true,
             "cwd": "${fileDirname}",
             "environment": [],
             "externalConsole": false,
@@ -29,6 +29,10 @@
             ],
             "vdbg":{
                 "context":"mysigmoidplotter",
+                "addon":{
+                    "generic_map_2d":{},
+                    "disable_named_breakpoints":["test","function","sample"],
+                },
                 "scripts":[
                     {"src":"vdbg.js","dst":"vdbg.js"}
                 ]
