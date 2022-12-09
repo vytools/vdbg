@@ -31,7 +31,7 @@
                 "context":"mysigmoidplotter",
                 "addon":{
                     "generic_map_2d":{},
-                    "disable_named_breakpoints":["test","function","sample"],
+                    "toggle_named_breakpoints":["test","function","sample"],
                 },
                 "scripts":[
                     {"src":"vdbg.js","dst":"vdbg.js"}

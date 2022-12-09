@@ -1,18 +1,14 @@
+import { PANEL } from "./button_panel.js";
 export function load(OVERLOADS) {
 	if (OVERLOADS.addon && OVERLOADS.addon.command_inputs) {
 	  function escapeHtml(unsafe) {
 		return unsafe.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
 	  }
-	  let panel = document.body.querySelector('#button_panel');
-	  if (!panel) {
-		document.body.insertAdjacentHTML('beforeend','<div id="button_panel" style="position:absolute; width:50%; max-height:300px; bottom:30px; left:30px"></div>');
-		panel = document.body.querySelector('#button_panel');
-	  }
 	  for (const [key,val] of Object.entries(OVERLOADS.addon.command_inputs)) {
 		let v = escapeHtml(JSON.stringify(val));
-		panel.insertAdjacentHTML('beforeend',`
+		PANEL.insertAdjacentHTML('beforeend',`
 		<div class="input-group mb-1" data-keyword="${key}">
-		  <input type="text" class="border form-control" title="${v}" aria-label="${v}">
+		  <input type="text" class="border form-control" title="${v}" placeholder="${key}" aria-label="${key}">
 		  <span class="cmd_bp input-group-text">+</span>
 		</div>`);
 	  }
