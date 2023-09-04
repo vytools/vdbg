@@ -9,4 +9,7 @@ npm install
 
 # Built a docker image to publish
 DOCKER_BUILDKIT=1 docker build --tag vsce "https://github.com/microsoft/vscode-vsce.git#main"
+Open a terminal in the workspace of this repository then:
 docker run --rm -it -v "$(pwd)":/workspace vsce publish
+
+<!-- cd workspace && nvm use lts/gallium && vsce publish -->

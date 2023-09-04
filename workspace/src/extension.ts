@@ -17,6 +17,7 @@ export function activate(context: vscode.ExtensionContext) {
 		VDBG?.setSession(session);
 	}) );
 	context.subscriptions.push( vscode.debug.onDidTerminateDebugSession(session => {
+		VDBG?.sendMessage({'topic':'__terminate_debug_session__'});
 		state = INIT_STATE;
 	}) );
 	// context.subscriptions.push( vscode.debug.onDidReceiveDebugSessionCustomEvent(ev => {  }) );
