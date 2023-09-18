@@ -8,35 +8,17 @@
             "name": "(gdb) Launch",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/bisection",
+            "program": "${workspaceFolder}/main",
             "args": [],
             "stopAtEntry": true,
             "cwd": "${fileDirname}",
             "environment": [],
             "externalConsole": false,
             "MIMode": "gdb",
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing for gdb",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": true
-                },
-                {
-                    "description":  "Set Disassembly Flavor to Intel",
-                    "text": "-gdb-set disassembly-flavor intel",
-                    "ignoreFailures": true
-                }
-            ],
-            "vdbg":{
-                "context":"mysigmoidplotter",
-                "addon":{
-                    "generic_map_2d":{},
-                    "toggle_named_breakpoints":["test","function","sample"],
-                },
-                "scripts":[
-                    {"src":"vdbg.js","dst":"vdbg.js"}
-                ]
-            }
+            "setupCommands": [],
+            "vdbg_scripts":[
+                {"src":"${workspaceFolder}/vdbg.js","dst":"vdbg.js"}
+            ]
         }
 
     ]

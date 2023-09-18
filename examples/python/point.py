@@ -13,6 +13,9 @@ class Point:
     self.x = 10*self.radius * math.sin(self.count/10); 
     self.y = 10*self.radius * math.cos(self.count/10);  
 
+  def __repr__(self):
+    return str(vars(self))
+
 p = Point()
 def point(count):
   p.step()

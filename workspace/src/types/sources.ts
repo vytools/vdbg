@@ -27,24 +27,56 @@ export interface stackTraceBody {
 }
 
 export class LanguageDbgType {
+	protected channel:vscode.OutputChannel;
 	protected _session: vscode.DebugSession | undefined;
 	protected _vdbgs: Vdbg = {breakpoints:[], snips:[]};
-    constructor(session:vscode.DebugSession) {
+    constructor(channel:vscode.OutputChannel, session:vscode.DebugSession) {
 		this._session = session;
+		this.channel = channel;
     }
 
 	public get_vdbg():Vdbg {
 		return this._vdbgs;
 	}
 
-	public eval_breakpoint(bp:Vbreakpoint, frameId:number|undefined, callback:Function) {
+	protected async parse(obj:any) {
+		return null;
 	}
+
+	protected async pre_eval(obj:any) {
+	}
+
+	protected async post_eval(obj:any) {
+	}
+
+	protected async request_format(value:any) {
+		return {expression:value, context:'repl'};
+	}
+
+    public async eval_breakpoint(bp:Vbreakpoint, frameId:number|undefined) {
+        if (bp.variables) {
+            let obj = JSON.parse(JSON.stringify(bp));
+			await this.pre_eval(obj);
+            for (const [key, value] of Object.entries(obj.variables)) {
+                let req:any = await this.request_format(value);
+                if (frameId) req.frameId = frameId;
+                let response = await this?._session?.customRequest('evaluate', req);
+                obj.variables[key] = await this.parse(response);
+				// this.channel.appendLine('responseDB: '+JSON.stringify(obj,null,2));
+            }
+			// this.channel.appendLine('responseDC: '+JSON.stringify(obj,null,2));
+			await this.post_eval(obj);
+            return obj;
+        } else {
+            return bp;
+        }
+    }
 
     public check_breakpoint(bpsource:stackTraceBody, callback:Function) {
         for (var ii = 0; ii < this._vdbgs.breakpoints.length; ii++) {
             let bp = this._vdbgs.breakpoints[ii];
             if (bp.uri.path == bpsource.source.path && bp.line == bpsource.line && bp.obj) {
-                this.eval_breakpoint(bp.obj, bpsource.id, callback);
+                this.eval_breakpoint(bp.obj, bpsource.id).then((obj:any) => {callback(obj)});
             }
         }
     }

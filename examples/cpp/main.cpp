@@ -9,16 +9,6 @@ double sq(double x) { return x*x-4; }
 double sig(double x) { return 1/(1+std::exp(-(x-0.4)*12))-0.04; }
 double powr(double x) { return std::pow(x+1.2,8) - 1; }
 
-/*<vdbg_js 
-export function load(OVERLOADS) {
-  OVERLOADS.PARSERS.fullfunc = function(data) {
-      OVERLOADS.DRAWDATA.plot = {draw_type:'polygon', strokeStyle:'green', lineWidth:4,
-        points:data.variables.xy, scaleSizeToScreen:true, draw_toggle:'plot'};
-      OVERLOADS.MAPFUNCS.draw();
-  }
-}
-vdbg_js>*/
-
 struct XY {
     double x;
     double y;
@@ -67,6 +57,7 @@ void some_stuff() {
 }
 
 int main() {
+  double xval=0, yval=0;
   some_stuff();
   std::vector<XY> xy;
   for (int ii = 0; ii < 1000; ii++) {
@@ -74,7 +65,7 @@ int main() {
     xy.push_back({x,sig(x)});
   }
   // <vdbg_bp {"name":"function","topic":"fullfunc","variables":{"xy":"xy"}} vdbg_bp>
-  for (int ii = 0; ii < 8; ii++) {
+  for (int ii = 0; ii < 12; ii++) {
     double xrr;
     bool s = bisection(-1, 1, 0.0001, ii+1, sig, xrr);
     // <vdbg_bp {"name":"sample","topic":"sample","variables":{"x":"xrr","y":"sig(xrr)"}} vdbg_bp>

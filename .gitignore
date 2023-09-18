@@ -8,3 +8,5 @@ workspace/media/resources/
 workspace/media/dynamic/
 
 *.vsix
+
+examples/cpp/main

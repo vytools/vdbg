@@ -1,30 +1,29 @@
-import { setup_generic_map } from "../../utilities/generic_map.js";
+import { setup_generic_map } from "../../vyjs/js/generic_map.js";
 
-export function load(OVERLOADS) {
+export function load_vdbg(VDBG) {
 	console.log('----reload!!')
 	document.body.style.padding = '0px';
 	document.body.style.margin = '0px';
 	document.body.insertAdjacentHTML('beforeend','<div class="content" style="position:absolute; width:100%; height:100%; overflow:hidden; padding:0px; margin:0px"></div>');
 	const content = document.querySelector('.content');
-	OVERLOADS.DRAWDATA = {plot:[], circles:[]};
-	OVERLOADS.MAPFUNCS = setup_generic_map(content, OVERLOADS.DRAWDATA);
-	window.onresize = OVERLOADS.MAPFUNCS.resize;
+	const DRAWDATA = {plot:[], circles:[]};
+	const MAPFUNCS = setup_generic_map(content, DRAWDATA);
+	window.onresize = MAPFUNCS.resize;
 	content.addEventListener('click',function(ev) {
-		if (ev.detail == 3) { // triple click
+		if (ev.detail == 2) { // double click
+			VDBG.dap_send_message('evaluate',{expression:'j',context:'repl'});
 		}
 	});
 
-	OVERLOADS.PARSERS.topicB = function(data) {
-		OVERLOADS.DRAWDATA.circles.push({draw_type:'circle', strokeStyle:'green', lineWidth:4,
-		  x:data.variables.x, y:data.variables.y, radius:data.variables.radius,
-		  scaleSizeToScreen:true});
-	}
+	VDBG.register_topic('topicB',(data)=> {
+		VDBG.log(data)
+		DRAWDATA.circles.push({draw_type:'circle', strokeStyle:'green', lineWidth:4,
+			x:data.variables.xy.x, y:data.variables.xy.y, radius:data.variables.xy.radius,
+			scaleSizeToScreen:true});
+		MAPFUNCS.draw();
+	})
+	VDBG.register_topic('print',VDBG.log);
 
-	OVERLOADS.HANDLER = function(data) {
-		if (OVERLOADS.PARSERS.hasOwnProperty(data?.topic)) {
-			OVERLOADS.PARSERS[data.topic](data);
-			OVERLOADS.MAPFUNCS.draw();
-		}
-	}
+	VDBG.info(`Ready!`);
 
 }

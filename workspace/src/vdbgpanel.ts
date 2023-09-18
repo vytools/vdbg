@@ -16,11 +16,13 @@ const makeid = function() {
 
 export class vDbgPanel {
 	public _session: vscode.DebugSession | undefined;
-	private _type: vdbg_sources.LanguageDbgType | undefined;
+	private _variable_parser: vdbg_sources.LanguageDbgType | undefined;
+	public channel = vscode.window.createOutputChannel("vdbg");
 	public readonly viewType = 'vDbg';
+	public currentThreadId: string|undefined;
 	private readonly _extensionUri: vscode.Uri;
 	private readonly _contentProvider: vscode.Disposable;
-	private _dynamicUri: Array<vscode.Uri> = []
+	private _dynamicUri: Array<vscode.Uri> = [];
 	private _panel: vscode.WebviewPanel|undefined;
 	private _disposables: vscode.Disposable[] = [];
 
@@ -33,7 +35,7 @@ export class vDbgPanel {
 	}
 	
 	public checkBreakpoint(bpsource:vdbg_sources.stackTraceBody) {
-		this._type?.check_breakpoint(bpsource, (obj:Object) => {this.sendMessage(obj)});
+		this._variable_parser?.check_breakpoint(bpsource, (obj:Object) => {this.sendMessage(obj)});
 	}
 
 	public setSession(session: vscode.DebugSession) {
@@ -50,8 +52,9 @@ export class vDbgPanel {
 		}
 	}
 
-	public setType(typ:vdbg_sources.LanguageDbgType) {
-		this._type = typ;
+	public setType(variable_parser:vdbg_sources.LanguageDbgType) {
+		this.channel.clear();
+		this._variable_parser = variable_parser;
 		this._dynamicUri.splice(0,this._dynamicUri.length);
 		if (!(this._panel && this._session)) {
 			vscode.window.showErrorMessage('vdbg error: No debug session or panel');
@@ -62,43 +65,42 @@ export class vDbgPanel {
 		}
 
 		let folderUri:vscode.WorkspaceFolder = this._session.workspaceFolder;
-		let vdbgConfig = this._session.configuration.vdbg;
-		if (!vdbgConfig || !vdbgConfig.scripts) {
-			vscode.window.showErrorMessage(`vdbg error: No "vdbg" field in launch configuration ${JSON.stringify(this._session.configuration)}`);
+		let vdbg_scripts = this._session.configuration.vdbg_scripts;
+		if (!vdbg_scripts) {
+			vscode.window.showErrorMessage(`vdbg error: No "vdbg_scripts" field in launch configuration ${JSON.stringify(this._session.configuration)}`);
 			return;
 		}
-		let vdbgs:vdbg_sources.Vdbg = this._type.get_vdbg();
+		let vdbgs:vdbg_sources.Vdbg = this._variable_parser.get_vdbg();
 		let jspaths:Array<vscode.Uri> = [];
 		this.clearDynamicFolder();
 		let dynamicFolder = vscode.Uri.joinPath(this._extensionUri, 'media', 'resources', makeid());
 		if (!fs.existsSync(dynamicFolder.fsPath)) fs.mkdirSync(dynamicFolder.fsPath, { recursive: true });
 
-		// - 1. load from items in launch.configuration.vdbg.addon
-		let addOnFolder = vscode.Uri.joinPath(this._extensionUri, 'media', 'addon');
-		if (vdbgConfig.addon) {
-			for (const [key,val] of Object.entries(vdbgConfig.addon)) {
-				try {
-					let src = vscode.Uri.joinPath(addOnFolder, key+".js");
-					jspaths.push(src);
-				} catch(err) {
-					vscode.window.showErrorMessage(`vdbg error: addon "${key}" does not exist`);
-
-				}
-			}
-		}
+		// - 1. load from items in launch.configuration.vdbg.builtin
+		// let builtinFolder = vscode.Uri.joinPath(this._extensionUri, 'media', 'builtin');
+		// if (vdbg_extension.builtin) {
+		// 	for (const [key,val] of Object.entries(vdbg_extension.builtin)) {
+		// 		try {
+		// 			let src = vscode.Uri.joinPath(builtinFolder, key+".js");
+		// 			jspaths.push(src);
+		// 		} catch(err) {
+		// 			vscode.window.showErrorMessage(`vdbg error: builtin "${key}" referenced in "vdbg_extension" of launch file does not exist`);
+		// 		}
+		// 	}
+		// }
 
 		// - 2. load from embedded <vdbg_js ... vdb_js> tags
-		for (var ii = 0; ii < vdbgs.snips.length; ii++) {
-			let dst = vscode.Uri.joinPath(dynamicFolder, makeid()+'.js');
-			fs.writeFileSync(dst.fsPath, vdbgs.snips[ii],{encoding:'utf8'});
-			jspaths.push(dst);
-		}
+		// for (var ii = 0; ii < vdbgs.snips.length; ii++) {
+		// 	let dst = vscode.Uri.joinPath(dynamicFolder, makeid()+'.js');
+		// 	fs.writeFileSync(dst.fsPath, vdbgs.snips[ii],{encoding:'utf8'});
+		// 	jspaths.push(dst);
+		// }
 
 		
 		// - 3. save items in launch.configuration.vdbg.scripts and load the first one
-		for (var ii = 0; ii < vdbgConfig.scripts.length; ii++) {
-			let resource = vdbgConfig.scripts[ii];
-			let src = vscode.Uri.joinPath(folderUri.uri, resource.src).fsPath;
+		for (var ii = 0; ii < vdbg_scripts.length; ii++) {
+			let resource = vdbg_scripts[ii];
+			let src = (path.isAbsolute(resource.src)) ? resource.src : vscode.Uri.joinPath(folderUri.uri, resource.src).fsPath;
 			let dst = vscode.Uri.joinPath(dynamicFolder, resource.dst);
 			if (dst.fsPath.indexOf('..') > -1) continue;
 			if (ii == 0) jspaths.push(dst);
@@ -115,6 +117,7 @@ export class vDbgPanel {
 				vscode.window.showErrorMessage(`Problem with source file ${src}: ${err}`);
 			}
 		}
+		let new_jspaths:any = jspaths.map(original => {return {original:original+'',resource:this._panel?.webview.asWebviewUri(original)+''}});
 
 		let bpobj:Object = vdbgs.breakpoints.map(bp => { 
 			let o = JSON.parse(JSON.stringify(bp.obj));
@@ -140,26 +143,71 @@ export class vDbgPanel {
 	</head>
 	<body>
 <script type="module">
-const OVERLOADS = ${JSON.stringify(vdbgConfig)};
-OVERLOADS.BREAKPOINTS = ${JSON.stringify(bpobj)};
-OVERLOADS.VSCODE = acquireVsCodeApi();
-OVERLOADS.PARSERS = {};
-const scripts = [${jspaths.map(p => `"${this._panel?.webview.asWebviewUri(p)}"`).join(',')}];
+const __topic_functions__ = {}
+const __api__ = acquireVsCodeApi();
+const get_vdbg = function() {
+	const VDBG = {};
+	VDBG.breakpoints = ${JSON.stringify(bpobj)};
+	VDBG.log = function() {
+		let message = ''; for (var i = 0; i < arguments.length; i++) message += JSON.stringify(arguments[i],null,2)+' ';
+		__api__.postMessage({type:'log',text:message});
+	}
+	VDBG.error = function() {
+		let message = ''; for (var i = 0; i < arguments.length; i++) message += JSON.stringify(arguments[i],null,2)+' ';
+		__api__.postMessage({type:'error',text:message});
+	}
+	VDBG.info = function() {
+		let message = ''; for (var i = 0; i < arguments.length; i++) message += JSON.stringify(arguments[i],null,2)+' ';
+		__api__.postMessage({type:'info',text:message});
+	}
+	VDBG.assess = (data) => {__api__.postMessage({type:'vdbg_bp', data});}
+	VDBG.add_breakpoints = (bp) => {__api__.postMessage({type:'add_breakpoints',breakpoints:bp});}
+	VDBG.remove_breakpoints = (bp) => {__api__.postMessage({type:'remove_breakpoints',breakpoints:bp});}
+	VDBG.dap_send_message = (command,args,topic) => {__api__.postMessage({type:'dap_send_message',command,arguments:args,topic});}
+	VDBG.register_topic = (topic,f) => {
+		if (typeof f === 'function') {
+			if (__topic_functions__.hasOwnProperty(topic)) {
+				__api__.postMessage({type:'info',text:'Overwriting duplicate vdbg topic "'+topic+'"'});
+			}
+			__api__.postMessage({type:'log',text:'Registering vdbg topic "'+topic+'"'});
+			__topic_functions__[topic] = f;
+		}
+	}
+	return VDBG;
+}
+
+window.addEventListener('message', event => {
+	try {
+		if (__topic_functions__.__handler__) {
+			__topic_functions__.__handler__(event.data);
+		} else if (event.data.topic && __topic_functions__.hasOwnProperty(event.data.topic)) {
+			__topic_functions__[event.data.topic](event.data);
+		} else {
+			__api__.postMessage({type:'info',text:'Unhandled data: '+JSON.stringify(event.data,null,2)});
+		}
+	} catch(err) {
+		__api__.postMessage({type:'log',text:'Topic error running vdbg script for topic "'+event.data.topic+'": '+err});
+		__api__.postMessage({type:'error',text:'Topic error running vdbg script for topic "'+event.data.topic+'": see "vdbg" output channel'});
+	}
+});
+
+const scripts = ${JSON.stringify(new_jspaths)};
 const load_next_script = function() {
 	if (scripts.length > 0) {
-		import(scripts.shift())
-		.then(builtin => { if (builtin.load) builtin.load(OVERLOADS); load_next_script(); })
-		.catch(err => console.log('err',err));
+		let script = scripts.shift();
+		import(script.resource)
+		.then(imprtd => {
+			if (imprtd.load_vdbg) imprtd.load_vdbg(get_vdbg());
+			load_next_script();
+		})
+		.catch(err => {
+			__api__.postMessage({type:'log',text:'Error loading vdbg script "'+script.original+'": '+err})
+			__api__.postMessage({type:'error',text:'Error loading vdbg script "'+script.original+'": see vdbg output channel'})
+		});
 	}
 }
 load_next_script();
-window.addEventListener('message', event => {
-	if (!OVERLOADS.HANDLER) {
-		OVERLOADS.VSCODE.postMessage({type:'error',text:'vydbg HANDLER was not defined.'})
-	} else if (event?.data) {
-		OVERLOADS.HANDLER(event.data);
-	}
-});
+
 </script>
 	</body>
 </html>`;
@@ -203,6 +251,8 @@ window.addEventListener('message', event => {
 			message => {
 				if (message.type == 'error') {
 					vscode.window.showErrorMessage(message.text);
+				} else if (message.type == 'log') {
+					this.channel.appendLine(message.text);
 				} else if (message.type == 'info') {
 					vscode.window.showInformationMessage(message.text);
 				} else if (message.type == 'add_breakpoints') {
@@ -231,9 +281,11 @@ window.addEventListener('message', event => {
 					console.log('Attempting to remove breakpoints:',bpx);
 					vscode.debug.removeBreakpoints(bpx);
 				} else if (message.type == 'vdbg_bp') {
-					if (message.data) this._type?.eval_breakpoint(message.data,undefined,(obj:any) => {this.sendMessage(obj)});
-				} else if (message.type == 'evaluate' && this._session) {
-					this._session.customRequest('evaluate', {expression:message.expression, context:'repl'}).then(response => {
+					if (message.data) this._variable_parser?.eval_breakpoint(message.data,undefined).then((obj:any) => {this.sendMessage(obj)});
+				} else if (message.type == 'dap_send_message' && message.hasOwnProperty('command') && this._session) {
+					if (!message.hasOwnProperty('arguments')) message.arguments = {};
+					if (!message.arguments.hasOwnProperty('threadId') && this.currentThreadId) message.arguments.threadId = this.currentThreadId;
+					this._session.customRequest(message.command, message.arguments).then(response => {
 						if (message.topic) this.sendMessage({topic:message.topic,response:response});
 					});
 				}
