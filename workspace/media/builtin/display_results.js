@@ -21,18 +21,22 @@ export function load_vdbg(VDBG) {
   // }
   
   const load_results = function() {
-      import('../vy_tools_results.json', {assert: {type: 'json'}}).then((exports) => { // assume vy_tools_results.json is at the top of the "media" folder
-        let bd = document.querySelector('#default-Results');
-        bd.innerHTML = '';
-        try {
-          bd.insertAdjacentHTML('beforeend', process_results(null, exports.default, bd, true));
-        } catch(err) {
-          VDBG.error('Failed to process results file. See vdbg output channel for details');
-          VDBG.log('Failed to process results file: ',exports.default,err);
-        }
-      }).catch((err) => {
-        VDBG.error('Results file not created');
-      });
+    // this is going to be relative to whatever imports and calls this load_results function.
+    // That will usually be in the instance folder in the resources folder next to the builtin
+    // folder containing this function. if vy_tools_results.json is in the media folder then the
+    // path is ../../vy_tools_results.json
+    import('../../vy_tools_results.json', {assert: {type: 'json'}}).then((exports) => { // assume vy_tools_results.json is at the top of the "media" folder
+      let bd = document.querySelector('#default-Results');
+      bd.innerHTML = '';
+      try {
+        process_results(null, exports.default, bd, true);
+      } catch(err) {
+        VDBG.error('Failed to process results file. See vdbg output channel for details');
+        VDBG.log(`Failed to process results file: ${err}`,exports.default);
+      }
+    }).catch((err) => {
+      VDBG.error('Results file not created');
+    });
   }
   
   document.querySelector('a.load').addEventListener('click',load_results);

@@ -47,6 +47,9 @@ export function activate(context: vscode.ExtensionContext) {
 								type_ = new CppdbgType(VDBG.channel, session, lastStackFrame.id, refresh);
 							} else if (type == 'python') {
 								type_ = new PydbgType(VDBG.channel, session, lastStackFrame.id, refresh);
+							} else {
+								type_ = new vdbg_sources.LanguageDbgType(VDBG.channel, session);
+								VDBG?.setType(type_);
 							}
 						}
 					} else if (VDBG && msg.type == 'response' && msg.command == 'variables') { // command = variables|stackTrace|scopes|thread

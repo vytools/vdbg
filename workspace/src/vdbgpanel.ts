@@ -47,7 +47,11 @@ export class vDbgPanel {
 		if (fs.existsSync(resources) && fs.statSync(resources).isDirectory()) {	// If the file is a directory
 			fs.readdirSync(resources).forEach(function(subpth: string) {
 				const pth = path.join(resources,subpth);
-				if (fs.existsSync(pth) && fs.statSync(pth).isDirectory()) fs.rmSync(pth, { recursive: true });
+				if (fs.existsSync(pth) && fs.statSync(pth).isDirectory()) {
+					fs.rmSync(pth, { recursive: true });
+				} else if (fs.existsSync(pth)) {
+					fs.rmSync(pth);
+				}
 			});
 		}
 	}
@@ -67,43 +71,22 @@ export class vDbgPanel {
 		let folderUri:vscode.WorkspaceFolder = this._session.workspaceFolder;
 		let vdbg_scripts = this._session.configuration.vdbg_scripts;
 		if (!vdbg_scripts) {
-			vscode.window.showErrorMessage(`vdbg error: No "vdbg_scripts" field in launch configuration ${JSON.stringify(this._session.configuration)}`);
+			vscode.window.showInformationMessage(`vdbg error: No "vdbg_scripts" field in launch configuration ${JSON.stringify(this._session.configuration)}`);
 			return;
 		}
 		let vdbgs:vdbg_sources.Vdbg = this._variable_parser.get_vdbg();
-		let jspaths:Array<vscode.Uri> = [];
+		let TopLevelFileOriginal:vscode.Uri|undefined;
 		this.clearDynamicFolder();
 		let dynamicFolder = vscode.Uri.joinPath(this._extensionUri, 'media', 'resources', makeid());
 		if (!fs.existsSync(dynamicFolder.fsPath)) fs.mkdirSync(dynamicFolder.fsPath, { recursive: true });
 
-		// - 1. load from items in launch.configuration.vdbg.builtin
-		// let builtinFolder = vscode.Uri.joinPath(this._extensionUri, 'media', 'builtin');
-		// if (vdbg_extension.builtin) {
-		// 	for (const [key,val] of Object.entries(vdbg_extension.builtin)) {
-		// 		try {
-		// 			let src = vscode.Uri.joinPath(builtinFolder, key+".js");
-		// 			jspaths.push(src);
-		// 		} catch(err) {
-		// 			vscode.window.showErrorMessage(`vdbg error: builtin "${key}" referenced in "vdbg_extension" of launch file does not exist`);
-		// 		}
-		// 	}
-		// }
-
-		// - 2. load from embedded <vdbg_js ... vdb_js> tags
-		// for (var ii = 0; ii < vdbgs.snips.length; ii++) {
-		// 	let dst = vscode.Uri.joinPath(dynamicFolder, makeid()+'.js');
-		// 	fs.writeFileSync(dst.fsPath, vdbgs.snips[ii],{encoding:'utf8'});
-		// 	jspaths.push(dst);
-		// }
-
-		
 		// - 3. save items in launch.configuration.vdbg.scripts and load the first one
 		for (var ii = 0; ii < vdbg_scripts.length; ii++) {
 			let resource = vdbg_scripts[ii];
 			let src = (path.isAbsolute(resource.src)) ? resource.src : vscode.Uri.joinPath(folderUri.uri, resource.src).fsPath;
 			let dst = vscode.Uri.joinPath(dynamicFolder, resource.dst);
 			if (dst.fsPath.indexOf('..') > -1) continue;
-			if (ii == 0) jspaths.push(dst);
+			if (ii == 0) TopLevelFileOriginal = dst;
 			try {
 				if (fs.existsSync(src)) {
 					let targetDir = path.dirname(dst.fsPath);
@@ -117,7 +100,11 @@ export class vDbgPanel {
 				vscode.window.showErrorMessage(`Problem with source file ${src}: ${err}`);
 			}
 		}
-		let new_jspaths:any = jspaths.map(original => {return {original:original+'',resource:this._panel?.webview.asWebviewUri(original)+''}});
+		if (!TopLevelFileOriginal) {
+			vscode.window.showErrorMessage(`No valid script defined in vdbg_scripts specified in launch configuration`);
+			return;
+		}
+		let TopLevelFileResource:vscode.Uri = this._panel?.webview.asWebviewUri(TopLevelFileOriginal);
 
 		let bpobj:Object = vdbgs.breakpoints.map(bp => { 
 			let o = JSON.parse(JSON.stringify(bp.obj));
@@ -145,35 +132,33 @@ export class vDbgPanel {
 <script type="module">
 const __topic_functions__ = {}
 const __api__ = acquireVsCodeApi();
-const get_vdbg = function() {
-	const VDBG = {};
-	VDBG.breakpoints = ${JSON.stringify(bpobj)};
-	VDBG.log = function() {
-		let message = ''; for (var i = 0; i < arguments.length; i++) message += JSON.stringify(arguments[i],null,2)+' ';
-		__api__.postMessage({type:'log',text:message});
-	}
-	VDBG.error = function() {
-		let message = ''; for (var i = 0; i < arguments.length; i++) message += JSON.stringify(arguments[i],null,2)+' ';
-		__api__.postMessage({type:'error',text:message});
-	}
-	VDBG.info = function() {
-		let message = ''; for (var i = 0; i < arguments.length; i++) message += JSON.stringify(arguments[i],null,2)+' ';
-		__api__.postMessage({type:'info',text:message});
-	}
-	VDBG.assess = (data) => {__api__.postMessage({type:'vdbg_bp', data});}
-	VDBG.add_breakpoints = (bp) => {__api__.postMessage({type:'add_breakpoints',breakpoints:bp});}
-	VDBG.remove_breakpoints = (bp) => {__api__.postMessage({type:'remove_breakpoints',breakpoints:bp});}
-	VDBG.dap_send_message = (command,args,topic) => {__api__.postMessage({type:'dap_send_message',command,arguments:args,topic});}
-	VDBG.register_topic = (topic,f) => {
-		if (typeof f === 'function') {
-			if (__topic_functions__.hasOwnProperty(topic)) {
-				__api__.postMessage({type:'info',text:'Overwriting duplicate vdbg topic "'+topic+'"'});
-			}
-			__api__.postMessage({type:'log',text:'Registering vdbg topic "'+topic+'"'});
-			__topic_functions__[topic] = f;
+const __postMessage__ = __api__.postMessage;
+const VDBG = {};
+VDBG.breakpoints = ${JSON.stringify(bpobj)};
+VDBG.log = function() {
+	let message = ''; for (var i = 0; i < arguments.length; i++) message += JSON.stringify(arguments[i],null,2)+' ';
+	__postMessage__({type:'log',text:message});
+}
+VDBG.error = function() {
+	let message = ''; for (var i = 0; i < arguments.length; i++) message += JSON.stringify(arguments[i],null,2)+' ';
+	__postMessage__({type:'error',text:message});
+}
+VDBG.info = function() {
+	let message = ''; for (var i = 0; i < arguments.length; i++) message += JSON.stringify(arguments[i],null,2)+' ';
+	__postMessage__({type:'info',text:message});
+}
+VDBG.assess = (data) => {__postMessage__({type:'vdbg_bp', data});}
+VDBG.add_breakpoints = (bp) => {__postMessage__({type:'add_breakpoints',breakpoints:bp});}
+VDBG.remove_breakpoints = (bp) => {__postMessage__({type:'remove_breakpoints',breakpoints:bp});}
+VDBG.dap_send_message = (command,args,topic) => {__postMessage__({type:'dap_send_message',command,arguments:args,topic});}
+VDBG.register_topic = (topic,f) => {
+	if (typeof f === 'function') {
+		if (__topic_functions__.hasOwnProperty(topic)) {
+			__postMessage__({type:'info',text:'Overwriting duplicate vdbg topic "'+topic+'"'});
 		}
+		__postMessage__({type:'log',text:'Registering vdbg topic "'+topic+'"'});
+		__topic_functions__[topic] = f;
 	}
-	return VDBG;
 }
 
 window.addEventListener('message', event => {
@@ -183,30 +168,20 @@ window.addEventListener('message', event => {
 		} else if (event.data.topic && __topic_functions__.hasOwnProperty(event.data.topic)) {
 			__topic_functions__[event.data.topic](event.data);
 		} else {
-			__api__.postMessage({type:'info',text:'Unhandled data: '+JSON.stringify(event.data,null,2)});
+			__postMessage__({type:'info',text:'Unhandled data: '+JSON.stringify(event.data,null,2)});
 		}
 	} catch(err) {
-		__api__.postMessage({type:'log',text:'Topic error running vdbg script for topic "'+event.data.topic+'": '+err});
-		__api__.postMessage({type:'error',text:'Topic error running vdbg script for topic "'+event.data.topic+'": see "vdbg" output channel'});
+		__postMessage__({type:'log',text:'Topic error running vdbg script for topic "'+event.data.topic+'": '+err});
+		__postMessage__({type:'error',text:'Topic error running vdbg script for topic "'+event.data.topic+'": see "vdbg" output channel'});
 	}
 });
 
-const scripts = ${JSON.stringify(new_jspaths)};
-const load_next_script = function() {
-	if (scripts.length > 0) {
-		let script = scripts.shift();
-		import(script.resource)
-		.then(imprtd => {
-			if (imprtd.load_vdbg) imprtd.load_vdbg(get_vdbg());
-			load_next_script();
-		})
-		.catch(err => {
-			__api__.postMessage({type:'log',text:'Error loading vdbg script "'+script.original+'": '+err})
-			__api__.postMessage({type:'error',text:'Error loading vdbg script "'+script.original+'": see vdbg output channel'})
-		});
-	}
-}
-load_next_script();
+import("${TopLevelFileResource}").then(imprtd => {
+	if (imprtd.load_vdbg) imprtd.load_vdbg(VDBG);
+}).catch(err => {
+	__postMessage__({type:'log',text:'Error loading vdbg script "${TopLevelFileOriginal}": '+err})
+	__postMessage__({type:'error',text:'Error loading vdbg script "${TopLevelFileOriginal}": see vdbg output channel'})
+});
 
 </script>
 	</body>
