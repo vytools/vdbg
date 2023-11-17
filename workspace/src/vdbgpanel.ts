@@ -14,6 +14,13 @@ const makeid = function() {
     return result;
 }
 
+const copy_source = function(src:string, dst:vscode.Uri) {
+	let targetDir = path.dirname(dst.fsPath);
+	if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
+	if (fs.existsSync(dst.fsPath)) fs.rmSync(dst.fsPath);
+	fs.copyFileSync(src, dst.fsPath);
+}
+
 export class vDbgPanel {
 	public _session: vscode.DebugSession | undefined;
 	private _variable_parser: vdbg_sources.LanguageDbgType | undefined;
@@ -88,11 +95,14 @@ export class vDbgPanel {
 			if (dst.fsPath.indexOf('..') > -1) continue;
 			if (ii == 0) TopLevelFileOriginal = dst;
 			try {
-				if (fs.existsSync(src)) {
-					let targetDir = path.dirname(dst.fsPath);
-					if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
-					if (fs.existsSync(dst.fsPath)) fs.rmSync(dst.fsPath);
-					fs.copyFileSync(src, dst.fsPath);
+				if (fs.existsSync(src) && fs.statSync(src).isFile()) {
+					copy_source(src, dst)
+				} else if (fs.existsSync(src) && TopLevelFileOriginal) {
+					vdbg_sources.dive(src,  /.*/i).forEach(s => {
+                        if (fs.existsSync(s) && fs.statSync(s).isFile()) {
+                            copy_source(s, vscode.Uri.joinPath(dynamicFolder, s.replace(src,resource.dst)));
+                        }
+					})
 				} else {
 					vscode.window.showErrorMessage(`File ${src} does not exist`);
 				}
