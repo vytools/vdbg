@@ -178,7 +178,7 @@ window.addEventListener('message', event => {
 		} else if (event.data.topic && __topic_functions__.hasOwnProperty(event.data.topic)) {
 			__topic_functions__[event.data.topic](event.data);
 		} else {
-			__postMessage__({type:'info',text:'Unhandled data: '+JSON.stringify(event.data,null,2)});
+			__postMessage__({type:'log',text:'Unhandled data: '+JSON.stringify(event.data,null,2)});
 		}
 	} catch(err) {
 		__postMessage__({type:'log',text:'Topic error running vdbg script for topic "'+event.data.topic+'": '+err});
@@ -197,7 +197,7 @@ import("${TopLevelFileResource}").then(imprtd => {
 	</body>
 </html>`;
 
-		this._panel.reveal(vscode.ViewColumn.Two);
+		this._panel.reveal();
 	}
 
 	constructor(extensionUri: vscode.Uri) {
