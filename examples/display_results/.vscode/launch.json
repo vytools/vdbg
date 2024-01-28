@@ -11,9 +11,7 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "justMyCode": true,
-            "vdbg_scripts":[
-                {"src":"${workspaceFolder}/../../workspace/media/builtin/display_results.js","dst":"display_results.js"}
-            ]
+            "vdbg_display_results":true
         }
     ]
 }

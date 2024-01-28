@@ -77,15 +77,20 @@ export class vDbgPanel {
 
 		let folderUri:vscode.WorkspaceFolder = this._session.workspaceFolder;
 		let vdbg_scripts = this._session.configuration.vdbg_scripts;
-		if (!vdbg_scripts) {
-			vscode.window.showInformationMessage(`vdbg error: No "vdbg_scripts" field in launch configuration ${JSON.stringify(this._session.configuration)}`);
-			return;
-		}
 		let vdbgs:vdbg_sources.Vdbg = this._variable_parser.get_vdbg();
 		let TopLevelFileOriginal:vscode.Uri|undefined;
 		this.clearDynamicFolder();
 		let dynamicFolder = vscode.Uri.joinPath(this._extensionUri, 'media', 'resources', makeid());
 		if (!fs.existsSync(dynamicFolder.fsPath)) fs.mkdirSync(dynamicFolder.fsPath, { recursive: true });
+
+		if (this._session.configuration.vdbg_display_results) {
+			vdbg_scripts = [
+				{src:vscode.Uri.joinPath(this._extensionUri,"media","builtin","display_results.js").fsPath,dst:"display_results.js"}
+			];
+		} else if (!vdbg_scripts) {
+			vscode.window.showInformationMessage(`vdbg error: No "vdbg_scripts" field in launch configuration ${JSON.stringify(this._session.configuration)}`);
+			return;
+		}
 
 		// - 3. save items in launch.configuration.vdbg.scripts and load the first one
 		for (var ii = 0; ii < vdbg_scripts.length; ii++) {
@@ -161,6 +166,7 @@ VDBG.assess = (data) => {__postMessage__({type:'vdbg_bp', data});}
 VDBG.add_breakpoints = (bp) => {__postMessage__({type:'add_breakpoints',breakpoints:bp});}
 VDBG.remove_breakpoints = (bp) => {__postMessage__({type:'remove_breakpoints',breakpoints:bp});}
 VDBG.dap_send_message = (command,args,topic) => {__postMessage__({type:'dap_send_message',command,arguments:args,topic});}
+VDBG.vy_tools_results = () => { __postMessage__({type:'vy_tools_results'}); };
 VDBG.register_topic = (topic,f) => {
 	if (typeof f === 'function') {
 		if (__topic_functions__.hasOwnProperty(topic)) {
@@ -172,22 +178,27 @@ VDBG.register_topic = (topic,f) => {
 }
 
 window.addEventListener('message', event => {
-	try {
-		if (__topic_functions__.__handler__) {
-			__topic_functions__.__handler__(event.data);
-		} else if (event.data.topic && __topic_functions__.hasOwnProperty(event.data.topic)) {
-			__topic_functions__[event.data.topic](event.data);
-		} else {
-			__postMessage__({type:'log',text:'Unhandled data: '+JSON.stringify(event.data,null,2)});
+	if (event.data.__vy_tools_results__ && VDBG.vy_tools_results_cb) {
+		VDBG.vy_tools_results_cb(event.data.data);
+	} else {
+		try {
+			if (__topic_functions__.__handler__) {
+				__topic_functions__.__handler__(event.data);
+			} else if (event.data.topic && __topic_functions__.hasOwnProperty(event.data.topic)) {
+				__topic_functions__[event.data.topic](event.data);
+			} else {
+				__postMessage__({type:'log',text:'Unhandled data: '+JSON.stringify(event.data,null,2)});
+			}
+		} catch(err) {
+			__postMessage__({type:'log',text:'Topic error running vdbg script for topic "'+event.data.topic+'": '+err});
+			__postMessage__({type:'error',text:'Topic error running vdbg script for topic "'+event.data.topic+'": see "vdbg" output channel'});
 		}
-	} catch(err) {
-		__postMessage__({type:'log',text:'Topic error running vdbg script for topic "'+event.data.topic+'": '+err});
-		__postMessage__({type:'error',text:'Topic error running vdbg script for topic "'+event.data.topic+'": see "vdbg" output channel'});
 	}
 });
 
 import("${TopLevelFileResource}").then(imprtd => {
 	if (imprtd.load_vdbg) imprtd.load_vdbg(VDBG);
+	if (imprtd.vy_tools_results) VDBG.vy_tools_results_cb = imprtd.vy_tools_results;
 }).catch(err => {
 	__postMessage__({type:'log',text:'Error loading vdbg script "${TopLevelFileOriginal}": '+err})
 	__postMessage__({type:'error',text:'Error loading vdbg script "${TopLevelFileOriginal}": see vdbg output channel'})
@@ -230,12 +241,19 @@ import("${TopLevelFileResource}").then(imprtd => {
 		// this._panel.onDidChangeViewState(
 		// 	e => { if (this._panel && this._panel.visible) this._update(); }, null, this._disposables
 		// );
-
+		let vy_tools_results = vscode.Uri.joinPath(this._extensionUri, 'media','vy_tools_results.json').fsPath;
 		// Handle messages from the webview
 		this._panel.webview.onDidReceiveMessage(
 			message => {
 				if (message.type == 'error') {
 					vscode.window.showErrorMessage(message.text);
+				} else if (message.type == 'vy_tools_results') {
+					try {
+						this.sendMessage({
+							__vy_tools_results__:true,
+							data:JSON.parse(fs.readFileSync(vy_tools_results))
+						});
+					} catch(err) {}
 				} else if (message.type == 'log') {
 					this.channel.appendLine(message.text);
 				} else if (message.type == 'info') {
