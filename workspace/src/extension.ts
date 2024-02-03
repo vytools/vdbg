@@ -10,6 +10,7 @@ export function activate(context: vscode.ExtensionContext) {
 	let VDBG:vDbgPanel | undefined;
 	let lastStackFrame:vdbg_sources.stackTraceBody|undefined
 	let triggered = false;
+	const channel:vscode.OutputChannel = vscode.window.createOutputChannel("vdbg");
 	const INIT_STATE:number = 0;
 	const SETT_STATE:number = 1;
 	let state = INIT_STATE;
@@ -27,7 +28,7 @@ export function activate(context: vscode.ExtensionContext) {
 		createDebugAdapterTracker: (session: vscode.DebugSession) => {
 			if (!VDBG || VDBG.disposed()) {
 				state = INIT_STATE;
-				VDBG = new vDbgPanel(context.extensionUri);
+				VDBG = new vDbgPanel(context.extensionUri, channel);
 			}
 			return {
 				onWillReceiveMessage: async msg => {
@@ -44,11 +45,11 @@ export function activate(context: vscode.ExtensionContext) {
 							let refresh = (t:vdbg_sources.LanguageDbgType) => { VDBG?.setType(t); }
 							let type = session.configuration.type;
 							if (type == 'cppdbg') {
-								type_ = new CppdbgType(VDBG.channel, session, lastStackFrame.id, refresh);
+								type_ = new CppdbgType(VDBG._channel, session, lastStackFrame.id, refresh);
 							} else if (type == 'python') {
-								type_ = new PydbgType(VDBG.channel, session, lastStackFrame.id, refresh);
+								type_ = new PydbgType(VDBG._channel, session, lastStackFrame.id, refresh);
 							} else {
-								type_ = new vdbg_sources.LanguageDbgType(VDBG.channel, session);
+								type_ = new vdbg_sources.LanguageDbgType(VDBG._channel, session);
 								VDBG?.setType(type_);
 							}
 						}
