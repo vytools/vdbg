@@ -19,7 +19,6 @@
 	],
 	"activationEvents": [
 		"onDebug",
-		"onCommand:vDbg.start",
 		"onWebviewPanel:vDbg"
 	],
 	"main": "./out/extension.js",
@@ -29,8 +28,57 @@
 				"command": "vDbg.start",
 				"title": "Start vdbg",
 				"category": "vDbg"
+			},
+			{
+				"command": "vyToolsGroups.openNodule",
+				"title": "Open Nodule"
+			},
+			{
+				"command": "vyToolsGroups.refreshGroup",
+				"title": "Check for new Nodules",
+				"icon": "$(refresh)"
+			},
+			{
+				"command": "vyToolsGroups.addGroup",
+				"title": "Add vy.tools Group",
+				"icon": "$(add)"
 			}
-		]
+		],
+		"menus": {
+			"view/title": [
+				{
+					"command": "vyToolsGroups.addGroup",
+					"when": "view == vyToolsGroups",
+					"group": "navigation"
+				}
+			],
+			"view/item/context": [
+				{
+					"command": "vyToolsGroups.refreshGroup",
+					"when": "view == vyToolsGroups && viewItem == vy_group",
+					"group": "inline"
+				}
+			]
+		},
+		"viewsContainers": {
+			"activitybar": [
+				{
+					"id": "vytools",
+					"title": "VyTools",
+					"icon": "resources/vy-text.svg"
+				}
+			]
+		},
+		"views": {
+			"vytools": [
+				{
+					"id": "vyToolsGroups",
+					"name": "Vy Groups",
+					"icon": "resources/vy-text.svg",
+					"contextualTitle": "Vy Groups"
+				}
+			]
+		}
 	},
 	"scripts": {
 		"vscode:prepublish": "npm run compile",

@@ -3,6 +3,7 @@ import { CppdbgType } from './types/cppdbg';
 import { PydbgType } from './types/pydbg';
 import { vDbgPanel } from './vdbgpanel';
 import * as vdbg_sources from './types/sources';
+import { VyToolsProvider } from './vy_tools_providers';
 
 // https://microsoft.github.io/debug-adapter-protocol/specification
 
@@ -22,6 +23,29 @@ export function activate(context: vscode.ExtensionContext) {
 		VDBG?.sendMessage({'topic':'__terminate_debug_session__'});
 		state = INIT_STATE;
 	}) );
+
+	// VytoolsProvider
+	// const rootPath = (vscode.workspace.workspaceFolders && (vscode.workspace.workspaceFolders.length > 0))
+	// 	? vscode.workspace.workspaceFolders[0].uri.fsPath : undefined;
+
+	// Samples of `window.registerTreeDataProvider`
+	const vyToolsProvider = new VyToolsProvider(context.extensionUri);
+	vscode.window.registerTreeDataProvider('vyToolsGroups', vyToolsProvider);
+	vscode.commands.registerCommand('vyToolsGroups.refreshGroup', (vygrp) => {
+		vyToolsProvider.refresh_group(vygrp.obj._id);
+	});
+	vscode.commands.registerCommand('vyToolsGroups.addGroup', async () => {
+		vyToolsProvider.add_group();
+	});
+	vscode.commands.registerCommand('vyToolsGroups.openNodule', (arg) => {
+		// https://code.visualstudio.com/api/extension-guides/command#programmatically-executing-a-command
+		// https://code.visualstudio.com/api/references/commands
+		// let df = vscode.Uri.parse('/home/nate/Documents/nate/vybase/spherebots');
+		// vscode.commands.executeCommand('remote-containers.openWorkspace',df);
+		// vscode.commands.executeCommand('vscode.openFolder',df,{forceReuseWindow:true})
+		vscode.window.showInformationMessage(`Successful openNodule ${arg}`);
+	});
+
 	// context.subscriptions.push( vscode.debug.onDidReceiveDebugSessionCustomEvent(ev => {  }) );
 	// context.subscriptions.push( vscode.debug.onDidChangeBreakpoints(ev => { }) );
 	vscode.debug.registerDebugAdapterTrackerFactory('*', {
