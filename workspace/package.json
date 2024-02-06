@@ -19,6 +19,7 @@
 	],
 	"activationEvents": [
 		"onDebug",
+		"workspaceContains:.vscode/vy.json",
 		"onWebviewPanel:vDbg"
 	],
 	"main": "./out/extension.js",
