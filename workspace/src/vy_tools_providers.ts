@@ -1,13 +1,16 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
-import { request } from 'http';
+import { request, get } from 'http';
+import * as zlib from 'zlib';
+const AdmZip = require('adm-zip');
 // import { request } from 'https';
 
 interface VyNodule {
 	_id: string;
 	name: string;
-	devContainer: Object;
+	vsczp: string;
+	devContainer: object;
 }
 
 interface VyGroup {
@@ -20,16 +23,43 @@ export class VyToolsProvider implements vscode.TreeDataProvider<GroupDependency 
 
 	private _onDidChangeTreeData: vscode.EventEmitter<GroupDependency | NoduleDependency | undefined | void> = new vscode.EventEmitter<GroupDependency | NoduleDependency | undefined | void>();
 	readonly onDidChangeTreeData: vscode.Event<GroupDependency | NoduleDependency| undefined | void> = this._onDidChangeTreeData.event;
-	private _vyGroupsPath: string = '';
-	constructor(private readonly extensionUri: vscode.Uri) {
-		this._vyGroupsPath = vscode.Uri.joinPath(extensionUri,'vy_groups').fsPath;
+	constructor(private readonly _vyGroupsPath: string) {
+	}
+
+	download_all_zips(group:VyGroup) {
+		let gpth = this._vyGroupsPath;
+		group.nodules.forEach(nodule => {
+			// vscode.window.showInformationMessage(`try to download ${nodule.vsczp}`);
+			const outputPath = path.join(gpth,nodule.name);
+			try {
+				fs.accessSync(outputPath);
+			} catch(err) {
+				const outputFile = path.join(gpth,nodule.name+'.zip');
+				const req = request(nodule.vsczp, {}, (response) => {
+					const isCompressed = response.headers['content-encoding'] === 'gzip' || response.headers['content-encoding'] === 'deflate';
+					const fileStream = fs.createWriteStream(outputFile);
+					const downloadStream = isCompressed ? response.pipe(zlib.createUnzip()) : response;
+					downloadStream.pipe(fileStream);
+					fileStream.on('finish', () => {
+						const zip = new AdmZip(outputFile);
+						zip.extractAllTo(outputPath, /*overwrite*/ true);
+						fs.unlinkSync(outputFile)
+					});
+				});
+				req.on('error', (err) => {
+					vscode.window.showErrorMessage(`Error downloading the zip file for nodule ${nodule.name}: ${err.message}`);
+				});
+				req.on('end', () => {});
+				req.end();
+			}
+		});
 	}
 
 	refresh_group(group_id: string | undefined) {
 		if (!group_id) return;
 		let vgp = this._vyGroupsPath;
 		let odctd = this._onDidChangeTreeData;
-		let req = request(`http://localhost/group_nodules/${group_id}`,{},(res) => {
+		const req = request(`http://localhost/group_nodules/${group_id}`,{},(res) => {
 			let body = "";
 			res.setEncoding('utf8');
 			res.on("data", (chunk) => { body += chunk; });
@@ -37,9 +67,10 @@ export class VyToolsProvider implements vscode.TreeDataProvider<GroupDependency 
 				try {
 					let group = JSON.parse(body);
 					if (group && group._id) {
-						let pth = path.join(vgp, `${group._id}.json`);
+						let pth = path.join(vgp, 'vy.group.json');
 						fs.writeFileSync(pth, JSON.stringify(group,null,2));
-						odctd.fire();				
+						this.download_all_zips(group);
+						odctd.fire();
 					}
 				} catch (error) {
 					vscode.window.showErrorMessage(`Failed to add/refresh ${group_id}: ${error}`);
@@ -54,19 +85,20 @@ export class VyToolsProvider implements vscode.TreeDataProvider<GroupDependency 
 			placeHolder: "group_id",
 			prompt: "Enter the group id from vy.tools"
 		});
-		this.refresh_group(group_id);
+		await this.refresh_group(group_id);
 	}
 	
 	getTreeItem(element: GroupDependency | NoduleDependency): vscode.TreeItem {
-		vscode.window.showInformationMessage(`getTreeItem ${JSON.stringify(element)}.`)
+		// vscode.window.showInformationMessage(`getTreeItem ${JSON.stringify(element)}.`)
 		return element;
 	}
 
 	getChildren(element?: GroupDependency | NoduleDependency): Thenable<GroupDependency[] | NoduleDependency[]> {
 		if (element) {
 			if (element.contextValue == 'vy_group' && 'nodules' in element.obj) {
-				vscode.window.showInformationMessage(`vy_group ${JSON.stringify(element.obj.nodules)}.`);
-				return Promise.resolve(element.obj.nodules.map((nodule:VyNodule) => new NoduleDependency(nodule)));
+                let pth = this._vyGroupsPath;
+				// vscode.window.showInformationMessage(`vy_group ${JSON.stringify(element.obj.nodules)}.`);
+				return Promise.resolve(element.obj.nodules.map((nodule:VyNodule) => new NoduleDependency(nodule,path.join(pth,nodule.name))));
 			} else {
 				return Promise.resolve([]);
 			}
@@ -74,13 +106,14 @@ export class VyToolsProvider implements vscode.TreeDataProvider<GroupDependency 
 			let dir = this._vyGroupsPath;
 			let groups:Array<VyGroup> = [];
 			try {
-				fs.readdirSync(dir).forEach(function(file: string) {
-					const pth = path.join(dir,file);
+				let pth = path.join(dir,'vy.group.json');
+				try {
+					fs.accessSync(pth);
 					const stat = fs.statSync(pth);
-					if (stat.isFile() && pth.endsWith('.json')) {
+					if (stat.isFile()) {
 						groups.push(JSON.parse(fs.readFileSync(pth, 'utf-8')));
 					}
-				});
+				} catch(err) {}
 			} catch (err) {
 			}
 			return Promise.resolve(groups.map(group => new GroupDependency(group)));
@@ -89,12 +122,12 @@ export class VyToolsProvider implements vscode.TreeDataProvider<GroupDependency 
 }
 
 export class NoduleDependency extends vscode.TreeItem {
-	constructor(public readonly obj: VyNodule) {
+	constructor(public readonly obj: VyNodule, public readonly nodulePath:string) {
 		super(obj.name, vscode.TreeItemCollapsibleState.None);
 		this.command = {
-			command: 'vyToolsGroups.openNodule',
-			title: `Open ${obj.name}`,
-			arguments: [obj.devContainer]
+			command: 'vyToolsGroups.infoNodule',
+			title: `${obj.name} Information`,
+			arguments: [obj,nodulePath]
 		}
 		this.tooltip = `Launch "${obj.name}" Nodule in a container`;
 	}

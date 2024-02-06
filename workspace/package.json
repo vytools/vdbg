@@ -30,8 +30,13 @@
 				"category": "vDbg"
 			},
 			{
+				"command": "vyToolsGroups.infoNodule",
+				"title": "Nodule Information"
+			},
+			{
 				"command": "vyToolsGroups.openNodule",
-				"title": "Open Nodule"
+				"title": "Open Nodule",
+				"icon": "$(play-circle)"
 			},
 			{
 				"command": "vyToolsGroups.refreshGroup",
@@ -56,6 +61,11 @@
 				{
 					"command": "vyToolsGroups.refreshGroup",
 					"when": "view == vyToolsGroups && viewItem == vy_group",
+					"group": "inline"
+				},
+				{
+					"command": "vyToolsGroups.openNodule",
+					"when": "view == vyToolsGroups && viewItem == vy_nodule",
 					"group": "inline"
 				}
 			]
@@ -96,6 +106,7 @@
 		"typescript": "^4.5.5"
 	},
 	"dependencies": {
+		"adm-zip": "^0.5.10",
 		"json5": "^2.2.3"
 	}
 }

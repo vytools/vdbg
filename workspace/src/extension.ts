@@ -24,27 +24,28 @@ export function activate(context: vscode.ExtensionContext) {
 		state = INIT_STATE;
 	}) );
 
-	// VytoolsProvider
-	// const rootPath = (vscode.workspace.workspaceFolders && (vscode.workspace.workspaceFolders.length > 0))
-	// 	? vscode.workspace.workspaceFolders[0].uri.fsPath : undefined;
-
-	// Samples of `window.registerTreeDataProvider`
-	const vyToolsProvider = new VyToolsProvider(context.extensionUri);
-	vscode.window.registerTreeDataProvider('vyToolsGroups', vyToolsProvider);
-	vscode.commands.registerCommand('vyToolsGroups.refreshGroup', (vygrp) => {
-		vyToolsProvider.refresh_group(vygrp.obj._id);
-	});
-	vscode.commands.registerCommand('vyToolsGroups.addGroup', async () => {
-		vyToolsProvider.add_group();
-	});
-	vscode.commands.registerCommand('vyToolsGroups.openNodule', (arg) => {
+	const rootPath = (vscode.workspace.workspaceFolders && (vscode.workspace.workspaceFolders.length > 0))
+	? vscode.workspace.workspaceFolders[0].uri.fsPath : undefined;
+	if (rootPath) {
+		const vyToolsProvider = new VyToolsProvider(rootPath);
+		vscode.window.registerTreeDataProvider('vyToolsGroups', vyToolsProvider);
+		vscode.commands.registerCommand('vyToolsGroups.refreshGroup', (vygrp) => {
+			vyToolsProvider.refresh_group(vygrp.obj._id);
+		});
+		vscode.commands.registerCommand('vyToolsGroups.addGroup', async () => {
+			vyToolsProvider.add_group();
+		});
 		// https://code.visualstudio.com/api/extension-guides/command#programmatically-executing-a-command
 		// https://code.visualstudio.com/api/references/commands
-		// let df = vscode.Uri.parse('/home/nate/Documents/nate/vybase/spherebots');
-		// vscode.commands.executeCommand('remote-containers.openWorkspace',df);
-		// vscode.commands.executeCommand('vscode.openFolder',df,{forceReuseWindow:true})
-		vscode.window.showInformationMessage(`Successful openNodule ${arg}`);
-	});
+		// https://code.visualstudio.com/api/references/icons-in-labels
+		vscode.commands.registerCommand('vyToolsGroups.openNodule', (element) => {
+			let df = vscode.Uri.parse(element.nodulePath);
+			vscode.commands.executeCommand('remote-containers.openWorkspace',df);
+		});
+		vscode.commands.registerCommand('vyToolsGroups.infoNodule', (obj,nodulePath) => {
+			vscode.window.showInformationMessage(`INFO ${JSON.stringify(obj)} ${nodulePath}`);
+		});
+	}
 
 	// context.subscriptions.push( vscode.debug.onDidReceiveDebugSessionCustomEvent(ev => {  }) );
 	// context.subscriptions.push( vscode.debug.onDidChangeBreakpoints(ev => { }) );
