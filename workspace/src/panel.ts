@@ -40,11 +40,7 @@ export class vyPanel {
 	// private _scripts:VyScript[] = [];
 	// private _messageParser:any;
 	public sendMessage(data: Object) {
-		if (this._panel) {
-			this._panel.webview.postMessage(data);
-		} else {
-			vscode.window.showErrorMessage('vdbg error: would send '+JSON.stringify(data)+' but no current webview');
-		}
+		if (this._panel) this._panel.webview.postMessage(data);
 	}
 
 	public clearDynamicFolder() {

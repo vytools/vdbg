@@ -29,7 +29,6 @@ export class VyToolsProvider implements vscode.TreeDataProvider<GroupDependency 
 	download_all_zips(group:VyGroup) {
 		let gpth = this._vyGroupsPath;
 		group.nodules.forEach(nodule => {
-			// vscode.window.showInformationMessage(`try to download ${nodule.vsczp}`);
 			const outputPath = path.join(gpth,nodule.name);
 			try {
 				fs.accessSync(outputPath);

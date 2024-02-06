@@ -21,11 +21,7 @@ export class vDbgPanel extends vyPanel {
 		this._channel?.clear();
 		this._variable_parser = variable_parser;
 		this._dynamicUri.splice(0,this._dynamicUri.length);
-		if (!(this._session && this._session.workspaceFolder)) {
-			vscode.window.showErrorMessage('vdbg error: No debug session or workspace loaded');
-			return false;
-		}
-
+		if (!(this._session && this._session.workspaceFolder)) return false;
 		let folderUri:vscode.WorkspaceFolder = this._session.workspaceFolder;
 		let vdbg_scripts = this._session.configuration.vdbg_scripts;
 		if (!vdbg_scripts) return;
