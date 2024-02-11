@@ -38,7 +38,7 @@ export function activate(context: vscode.ExtensionContext) {
 		? vscode.workspace.workspaceFolders[0] : undefined;
 	if (rootPath) {
 		let pth = path.join(rootPath.uri.fsPath,'.vscode','vy.json');
-		let vyjson:VyJson = {panel_scripts:undefined};
+		let vyjson:VyJson = {panel_scripts:undefined,access_scripts:undefined};
 		try {
 			let txt = fs.readFileSync(pth,{encoding:'utf8',flag:'r'});
 			txt = txt.replace(/\$\{workspaceFolder\}/g, rootPath.uri.fsPath);
@@ -46,11 +46,12 @@ export function activate(context: vscode.ExtensionContext) {
 			vyjson = JSON.parse(txt);
 		} catch(err) {}
 		if (vyjson.panel_scripts) {
+			let access_scripts = vyjson.access_scripts || [];
 			let panel = new vyPanel(context.extensionUri, channel);
-			panel.createPanel({},rootPath,vyjson.panel_scripts,function(message:any) {});
+			panel.createPanel({},rootPath,vyjson.panel_scripts,access_scripts,function(message:any) {});
 			setInterval(() => {
 				if (panel.disposed() && vyjson.panel_scripts) {
-					panel.createPanel({},rootPath,vyjson.panel_scripts,function(message:any) {});
+					panel.createPanel({},rootPath,vyjson.panel_scripts,access_scripts,function(message:any) {});
 				}
 			},500);
 			return; // can't use both panel_scripts and vdbg_scripts

@@ -25,8 +25,14 @@ export interface VyScript {
 	dst: string;
 };
 
+export interface VyAccess {
+	src: string;
+	label: string;
+};
+
 export interface VyJson {
 	panel_scripts: VyScript[] | undefined;
+	access_scripts: VyAccess[] | undefined;
 };
 
 export class vyPanel {
@@ -57,7 +63,13 @@ export class vyPanel {
 		}
 	}
 
-	public createPanel(bpobj:Object, workspace:vscode.WorkspaceFolder, scripts:VyScript[], messageParser:any) {
+	public createPanel(
+		bpobj:Object,
+		workspace:vscode.WorkspaceFolder,
+		scripts:VyScript[],
+		access:VyAccess[],
+		messageParser:any)
+	{
 		// this._messageParser = messageParser;
 		// this._bpobj = bpobj;
 		// this._workspace = workspace;
@@ -91,17 +103,24 @@ export class vyPanel {
 		// this._panel.onDidChangeViewState(
 		// 	e => { if (this._panel && this._panel.visible) this._update(); }, null, this._disposables
 		// );
-		let vy_tools_results = vscode.Uri.joinPath(this._extensionUri, 'media','vy_tools_results.json').fsPath;
 		// Handle messages from the webview
 		this._panel.webview.onDidReceiveMessage(
 			message => {
 				if (message.type == 'error') {
 					vscode.window.showErrorMessage(message.text);
-				} else if (message.type == 'vy_tools_results') {
+				} else if (message.type == 'write') {
 					try {
-						this.sendMessage({
-							__vy_tools_results__:true,
-							data:JSON.parse(fs.readFileSync(vy_tools_results))
+						access.forEach(a => {
+							if (a.label == message.label) fs.writeFileSync(a.src, message.text);
+						});
+					} catch(err) {}
+				} else if (message.type == 'read') {
+					try {
+						access.forEach(a => {
+							if (a.label == message.label && message.callback_topic) {
+								let txt = fs.readFileSync(a.src,{ encoding: 'utf8', flag: 'r' });
+								this.sendMessage({topic:message.callback_topic, data:txt});
+							}
 						});
 					} catch(err) {}
 				} else if (message.type == 'log' && this._channel) {
@@ -185,11 +204,16 @@ export class vyPanel {
 			let message = ''; for (var i = 0; i < arguments.length; i++) message += JSON.stringify(arguments[i],null,2)+' ';
 			__postMessage__({type:'info',text:message});
 		}
+		VDBG.write = function(label, text) {
+			__postMessage__({type:'write', label:label, text:text});
+		}
+		VDBG.read = function(label, callback_topic) {
+			__postMessage__({type:'read', label:label, callback_topic:callback_topic});
+		}
 		VDBG.assess = (data) => {__postMessage__({type:'vdbg_bp', data});}
 		VDBG.add_breakpoints = (bp) => {__postMessage__({type:'add_breakpoints',breakpoints:bp});}
 		VDBG.remove_breakpoints = (bp) => {__postMessage__({type:'remove_breakpoints',breakpoints:bp});}
 		VDBG.dap_send_message = (command,args,topic) => {__postMessage__({type:'dap_send_message',command,arguments:args,topic});}
-		VDBG.vy_tools_results = () => { __postMessage__({type:'vy_tools_results'}); };
 		VDBG.register_topic = (topic,f) => {
 			if (typeof f === 'function') {
 				if (__topic_functions__.hasOwnProperty(topic)) {
@@ -201,27 +225,22 @@ export class vyPanel {
 		}
 
 		window.addEventListener('message', event => {
-			if (event.data.__vy_tools_results__ && VDBG.vy_tools_results_cb) {
-				VDBG.vy_tools_results_cb(event.data.data);
-			} else {
-				try {
-					if (__topic_functions__.__handler__) {
-						__topic_functions__.__handler__(event.data);
-					} else if (event.data.topic && __topic_functions__.hasOwnProperty(event.data.topic)) {
-						__topic_functions__[event.data.topic](event.data);
-					} else {
-						__postMessage__({type:'log',text:'Unhandled data: '+JSON.stringify(event.data,null,2)});
-					}
-				} catch(err) {
-					__postMessage__({type:'log',text:'Topic error running vdbg script for topic "'+event.data.topic+'": '+err});
-					__postMessage__({type:'error',text:'Topic error running vdbg script for topic "'+event.data.topic+'": see "vdbg" output channel'});
+			try {
+				if (__topic_functions__.__handler__) {
+					__topic_functions__.__handler__(event.data);
+				} else if (event.data.topic && __topic_functions__.hasOwnProperty(event.data.topic)) {
+					__topic_functions__[event.data.topic](event.data);
+				} else {
+					__postMessage__({type:'log',text:'Unhandled data: '+JSON.stringify(event.data,null,2)});
 				}
+			} catch(err) {
+				__postMessage__({type:'log',text:'Topic error running vdbg script for topic "'+event.data.topic+'": '+err});
+				__postMessage__({type:'error',text:'Topic error running vdbg script for topic "'+event.data.topic+'": see "vdbg" output channel'});
 			}
 		});
 
 		import("${TopLevelFileResource}").then(imprtd => {
 			if (imprtd.load_vdbg) imprtd.load_vdbg(VDBG);
-			if (imprtd.vy_tools_results) VDBG.vy_tools_results_cb = imprtd.vy_tools_results;
 		}).catch(err => {
 			__postMessage__({type:'log',text:'Error loading vdbg script "${TopLevelFileOriginal}": '+err})
 			__postMessage__({type:'error',text:'Error loading vdbg script "${TopLevelFileOriginal}": see vdbg output channel'})

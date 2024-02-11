@@ -25,6 +25,7 @@ export class vDbgPanel extends vyPanel {
 		let folderUri:vscode.WorkspaceFolder = this._session.workspaceFolder;
 		let vdbg_scripts = this._session.configuration.vdbg_scripts;
 		if (!vdbg_scripts) return;
+		let access_scripts = this._session.configuration.access_scripts || [];
 		let bpobj:Object = this._variable_parser.get_vdbg().breakpoints.map(bp => { 
 			let o = JSON.parse(JSON.stringify(bp.obj));
 			o.path = bp.uri.fsPath;
@@ -70,8 +71,7 @@ export class vDbgPanel extends vyPanel {
 				});
 			}
 		}
-	
-		this.createPanel(bpobj, folderUri, vdbg_scripts, messageParser);
+		this.createPanel(bpobj, folderUri, vdbg_scripts, access_scripts, messageParser);
 	}
 
 	constructor(extensionUri:vscode.Uri, channel:vscode.OutputChannel) {
