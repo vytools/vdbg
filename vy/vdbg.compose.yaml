@@ -1,7 +1,7 @@
 x-vy:
   anchors:
     IMAGE: stage:vdbg
-    EXTENSION: vydir:vdbg
+    EXTENSION: repo:git|github.com|vytools|vdbg
 
 services:
   server:
