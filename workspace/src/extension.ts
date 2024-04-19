@@ -9,29 +9,6 @@ const fs = require('fs');
 import { VyJson, vyPanel } from './panel';
 // https://microsoft.github.io/debug-adapter-protocol/specification
 
-// const vySideBar = function(rootPath:vscode.WorkspaceFolder | undefined) {
-// 	if (rootPath) {
-// 		// https://code.visualstudio.com/api/extension-guides/command#programmatically-executing-a-command
-// 		// https://code.visualstudio.com/api/references/commands
-// 		// https://code.visualstudio.com/api/references/icons-in-labels
-// 		const vyToolsProvider = new VyToolsProvider(rootPath.uri.fsPath);
-// 		vscode.window.registerTreeDataProvider('vyToolsGroups', vyToolsProvider);
-// 		vscode.commands.registerCommand('vyToolsGroups.refreshGroup', (vygrp) => {
-// 			vyToolsProvider.refresh_group(vygrp.obj._id);
-// 		});
-// 		vscode.commands.registerCommand('vyToolsGroups.addGroup', async () => {
-// 			vyToolsProvider.add_group();
-// 		});
-// 		vscode.commands.registerCommand('vyToolsGroups.openNodule', (element) => {
-// 			let df = vscode.Uri.parse(element.nodulePath);
-// 			vscode.commands.executeCommand('remote-containers.openWorkspace',df);
-// 		});
-// 		vscode.commands.registerCommand('vyToolsGroups.infoNodule', (obj,nodulePath) => {
-// 			vscode.window.showInformationMessage(`INFO ${JSON.stringify(obj)} ${nodulePath}`);
-// 		});
-// 	}
-// }
-
 export function activate(context: vscode.ExtensionContext) {
 	const channel:vscode.OutputChannel = vscode.window.createOutputChannel("vdbg");
 	const rootPath = (vscode.workspace.workspaceFolders && (vscode.workspace.workspaceFolders.length > 0))
