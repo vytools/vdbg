@@ -3,9 +3,9 @@ import { CppdbgType } from './types/cppdbg';
 import { PydbgType } from './types/pydbg';
 import { vDbgPanel } from './vdbgpanel';
 import * as vdbg_sources from './types/sources';
-import { VyToolsProvider } from './vy_tools_providers';
-const path = require('path');
 const fs = require('fs');
+const path = require('path');
+
 import { VyJson, vyPanel } from './panel';
 // https://microsoft.github.io/debug-adapter-protocol/specification
 
@@ -14,7 +14,7 @@ export function activate(context: vscode.ExtensionContext) {
 	const rootPath = (vscode.workspace.workspaceFolders && (vscode.workspace.workspaceFolders.length > 0))
 		? vscode.workspace.workspaceFolders[0] : undefined;
 	if (rootPath) {
-		let pth = path.join(rootPath.uri.fsPath,'.vscode','vy.json');
+		const pth = path.join(rootPath.uri.fsPath,'.vscode','vy.json');
 		let vyjson:VyJson = {panel_scripts:undefined,access_scripts:undefined};
 		try {
 			let txt = fs.readFileSync(pth,{encoding:'utf8',flag:'r'});
@@ -23,8 +23,8 @@ export function activate(context: vscode.ExtensionContext) {
 			vyjson = JSON.parse(txt);
 		} catch(err) {}
 		if (vyjson.panel_scripts) {
-			let access_scripts = vyjson.access_scripts || [];
-			let panel = new vyPanel(context.extensionUri, channel);
+			const access_scripts = vyjson.access_scripts || [];
+			const panel = new vyPanel(context.extensionUri, channel);
 			panel.createPanel({},rootPath,vyjson.panel_scripts,access_scripts,function(message:any) {});
 			setInterval(() => {
 				if (panel.disposed() && vyjson.panel_scripts) {
@@ -36,12 +36,12 @@ export function activate(context: vscode.ExtensionContext) {
 	}
 
 	let VDBG:vDbgPanel | undefined;
-	let lastStackFrame:vdbg_sources.stackTraceBody|undefined
+	let lastStackFrame:vdbg_sources.stackTraceBody|undefined;
 	let triggered = false;
-	const INIT_STATE:number = 0;
-	const SETT_STATE:number = 1;
+	const INIT_STATE = 0;
+	const SETT_STATE = 1;
 	let state = INIT_STATE;
-	let type_:vdbg_sources.LanguageDbgType | undefined
+	let type_:vdbg_sources.LanguageDbgType | undefined;
 	context.subscriptions.push( vscode.debug.onDidStartDebugSession(session => {
 		VDBG?.setSession(session);
 	}) );
@@ -71,8 +71,8 @@ export function activate(context: vscode.ExtensionContext) {
 						triggered = false;
 						if (state == INIT_STATE && lastStackFrame) {
 							state = SETT_STATE;
-							let refresh = (t:vdbg_sources.LanguageDbgType) => { VDBG?.setType(t); }
-							let type = session.configuration.type;
+							const refresh = (t:vdbg_sources.LanguageDbgType) => { VDBG?.setType(t); };
+							const type = session.configuration.type;
 							if (type == 'cppdbg') {
 								type_ = new CppdbgType(VDBG._channel, session, lastStackFrame.id, refresh);
 							} else if (type == 'python') {

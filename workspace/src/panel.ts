@@ -4,36 +4,36 @@ const fs = require('fs');
 const path = require('path');
 
 const makeid = function() {
-    var result           = 'x';
-    var characters       = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    var charactersLength = characters.length;
-    for ( var i = 0; i < 20; i++ ) {
+    let result = 'x';
+    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    const charactersLength = characters.length;
+    for ( let i = 0; i < 20; i++ ) {
         result += characters.charAt(Math.floor(Math.random() * charactersLength));
     }
     return result;
-}
+};
 
 const copy_source = function(src:string, dst:vscode.Uri) {
-	let targetDir = path.dirname(dst.fsPath);
+	const targetDir = path.dirname(dst.fsPath);
 	if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
 	if (fs.existsSync(dst.fsPath)) fs.rmSync(dst.fsPath);
 	fs.copyFileSync(src, dst.fsPath);
-}
+};
 
 export interface VyScript {
 	src: string;
 	dst: string;
-};
+}
 
 export interface VyAccess {
 	src: string;
 	label: string;
-};
+}
 
 export interface VyJson {
 	panel_scripts: VyScript[] | undefined;
 	access_scripts: VyAccess[] | undefined;
-};
+}
 
 export class vyPanel {
 	public _channel:vscode.OutputChannel;
@@ -45,12 +45,12 @@ export class vyPanel {
 	// private _bpobj:Object = {};
 	// private _scripts:VyScript[] = [];
 	// private _messageParser:any;
-	public sendMessage(data: Object) {
+	public sendMessage(data: any) {
 		if (this._panel) this._panel.webview.postMessage(data);
 	}
 
 	public clearDynamicFolder() {
-		let resources = vscode.Uri.joinPath(this._extensionUri,'media','resources').fsPath;
+		const resources = vscode.Uri.joinPath(this._extensionUri,'media','resources').fsPath;
 		if (fs.existsSync(resources) && fs.statSync(resources).isDirectory()) {	// If the file is a directory
 			fs.readdirSync(resources).forEach(function(subpth: string) {
 				const pth = path.join(resources,subpth);
@@ -64,7 +64,7 @@ export class vyPanel {
 	}
 
 	public createPanel(
-		bpobj:Object,
+		bpobj:any,
 		workspace:vscode.WorkspaceFolder,
 		scripts:VyScript[],
 		access:VyAccess[],
@@ -118,7 +118,7 @@ export class vyPanel {
 					try {
 						access.forEach(a => {
 							if (a.label == message.label && message.callback_topic) {
-								let txt = fs.readFileSync(a.src,{ encoding: 'utf8', flag: 'r' });
+								const txt = fs.readFileSync(a.src,{ encoding: 'utf8', flag: 'r' });
 								this.sendMessage({topic:message.callback_topic, data:txt});
 							}
 						});
@@ -136,25 +136,25 @@ export class vyPanel {
 		);
 		let TopLevelFileOriginal:vscode.Uri|undefined;
 		this.clearDynamicFolder();
-		let dynamicFolder = vscode.Uri.joinPath(this._extensionUri, 'media', 'resources', makeid());
+		const dynamicFolder = vscode.Uri.joinPath(this._extensionUri, 'media', 'resources', makeid());
 		if (!fs.existsSync(dynamicFolder.fsPath)) fs.mkdirSync(dynamicFolder.fsPath, { recursive: true });
 
 		// - 3. save items in launch.configuration.vdbg.scripts and load the first one
-		for (var ii = 0; ii < scripts.length; ii++) {
-			let resource = scripts[ii];
-			let src = (path.isAbsolute(resource.src)) ? resource.src : vscode.Uri.joinPath(workspace.uri, resource.src).fsPath;
-			let dst = vscode.Uri.joinPath(dynamicFolder, resource.dst);
+		for (let ii = 0; ii < scripts.length; ii++) {
+			const resource = scripts[ii];
+			const src = (path.isAbsolute(resource.src)) ? resource.src : vscode.Uri.joinPath(workspace.uri, resource.src).fsPath;
+			const dst = vscode.Uri.joinPath(dynamicFolder, resource.dst);
 			if (dst.fsPath.indexOf('..') > -1) continue;
 			if (ii == 0) TopLevelFileOriginal = dst;
 			try {
 				if (fs.existsSync(src) && fs.statSync(src).isFile()) {
-					copy_source(src, dst)
+					copy_source(src, dst);
 				} else if (fs.existsSync(src) && TopLevelFileOriginal) {
 					vdbg_sources.dive(src,  /.*/i).forEach(s => {
 						if (fs.existsSync(s) && fs.statSync(s).isFile()) {
 							copy_source(s, vscode.Uri.joinPath(dynamicFolder, s.replace(src,resource.dst)));
 						}
-					})
+					});
 				} else {
 					vscode.window.showErrorMessage(`File ${src} does not exist`);
 				}
@@ -167,9 +167,9 @@ export class vyPanel {
 			return;
 		}
 		
-		let TopLevelFileResource:vscode.Uri = this._panel?.webview.asWebviewUri(TopLevelFileOriginal);
+		const TopLevelFileResource:vscode.Uri = this._panel?.webview.asWebviewUri(TopLevelFileOriginal);
 
-		let panel = this._panel;
+		const panel = this._panel;
 		this._panel.title = 'vdbg';
 		let styles = ['reset.css','bootstrap.min.css','vscode.css'].map(f => {
 			return `<link href="${panel.webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'styles', f))}" rel="stylesheet">`;
