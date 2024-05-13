@@ -5,15 +5,12 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python: Current File",
-            "type": "python",
+            "name": "testx",
+            "type": "debugpy",
             "request": "launch",
-            "program": "${file}",
+            "program": "testx.py",
             "console": "integratedTerminal",
-            "justMyCode": true,
-            "vdbg_scripts":[
-                {"src":"${workspaceFolder}/.vscode/localhost.js","dst":"localhost.js"}
-            ]
+            "justMyCode": true
         }
     ]
 }

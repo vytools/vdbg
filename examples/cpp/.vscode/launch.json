@@ -15,10 +15,7 @@
             "environment": [],
             "externalConsole": false,
             "MIMode": "gdb",
-            "setupCommands": [],
-            "vdbg_scripts":[
-                {"src":"${workspaceFolder}/vdbg.js","dst":"vdbg.js"}
-            ]
+            "setupCommands": []
         }
 
     ]

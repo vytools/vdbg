@@ -11,10 +11,13 @@ export function load_vdbg(VDBG) {
 	window.onresize = MAPFUNCS.resize;
 	content.addEventListener('click',function(ev) {
 		if (ev.detail == 2) { // double click
-			VDBG.dap_send_message('evaluate',{expression:'j',context:'repl'});
+			VDBG.dap_send_message('evaluate',{expression:'j',context:'repl'},'checkj');
 		}
 	});
-
+	VDBG.register_topic('checkj',(data) => {
+		VDBG.log(data);
+		VDBG.info(data);
+	})
 	VDBG.register_topic('topicB',(data)=> {
 		VDBG.log(data)
 		DRAWDATA.circles.push({draw_type:'circle', strokeStyle:'green', lineWidth:4,

@@ -1,0 +1,10 @@
+{
+    "vdbg_scripts":[
+        {
+            "config":"main.py",
+            "files": [
+                {"src":"${workspaceFolder}/vdbg.js","dst":"vdbg.js"}
+            ]
+        }
+    ]
+}

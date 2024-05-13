@@ -1,8 +1,6 @@
 import json
 from pathlib import Path
-print('done')
 Path('./test.json').write_text(json.dumps({}))
-print('done')
 Path('./test.json').write_text(json.dumps({
   "problems":[
     {
@@ -21,6 +19,5 @@ Path('./test.json').write_text(json.dumps({
     }
   ]
 }))
-print('done')
 Path('./test.json').write_text(json.dumps({}))
 print('done')

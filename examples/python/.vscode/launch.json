@@ -5,15 +5,12 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python: Current File",
-            "type": "python",
+            "name": "main.py",
+            "type": "debugpy",
             "request": "launch",
-            "program": "${file}",
+            "program": "main.py",
             "console": "integratedTerminal",
-            "justMyCode": true,
-            "vdbg_scripts":[
-                {"src":"${workspaceFolder}/vdbg.js","dst":"vdbg.js"}
-            ]
+            "justMyCode": true
         }
     ]
 }

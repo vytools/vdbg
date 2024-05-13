@@ -1,0 +1,5 @@
+{
+    "panel_scripts":[
+        {"src":"${workspaceFolder}/.vscode/localhost.js","dst":"localhost.js"}
+    ]
+}

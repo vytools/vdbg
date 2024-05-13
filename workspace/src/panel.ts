@@ -20,6 +20,11 @@ const copy_source = function(src:string, dst:vscode.Uri) {
 	fs.copyFileSync(src, dst.fsPath);
 };
 
+export interface VyConfigScript {
+	config: string;
+	files: VyScript[];
+};
+
 export interface VyScript {
 	src: string;
 	dst: string;
@@ -31,8 +36,9 @@ export interface VyAccess {
 }
 
 export interface VyJson {
-	panel_scripts: VyScript[] | undefined;
-	access_scripts: VyAccess[] | undefined;
+	panel_scripts: VyScript[];
+	access_scripts: VyAccess[];
+	vdbg_scripts: VyConfigScript[];
 }
 
 export class vyPanel {
@@ -41,10 +47,6 @@ export class vyPanel {
 	private readonly _extensionUri: vscode.Uri;
 	protected _panel: vscode.WebviewPanel|undefined;
 	private _disposables: vscode.Disposable[] = [];
-	// private _workspace:vscode.WorkspaceFolder|undefined;
-	// private _bpobj:Object = {};
-	// private _scripts:VyScript[] = [];
-	// private _messageParser:any;
 	public sendMessage(data: any) {
 		if (this._panel) this._panel.webview.postMessage(data);
 	}
@@ -70,10 +72,6 @@ export class vyPanel {
 		access:VyAccess[],
 		messageParser:any)
 	{
-		// this._messageParser = messageParser;
-		// this._bpobj = bpobj;
-		// this._workspace = workspace;
-		// this._scripts = scripts;
 		if (this._panel) return;
 		this._panel = vscode.window.createWebviewPanel(
 			this.viewType,

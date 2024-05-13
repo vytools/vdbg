@@ -13,22 +13,24 @@ export function activate(context: vscode.ExtensionContext) {
 	const channel:vscode.OutputChannel = vscode.window.createOutputChannel("vdbg");
 	const rootPath = (vscode.workspace.workspaceFolders && (vscode.workspace.workspaceFolders.length > 0))
 		? vscode.workspace.workspaceFolders[0] : undefined;
+	let vyjson:VyJson = {panel_scripts:[],access_scripts:[],vdbg_scripts:[]}; 
 	if (rootPath) {
-		const pth = path.join(rootPath.uri.fsPath,'.vscode','vy.json');
-		let vyjson:VyJson = {panel_scripts:undefined,access_scripts:undefined};
+		const pth = path.join(rootPath.uri.fsPath,'.vscode','vdbg.json');
 		try {
 			let txt = fs.readFileSync(pth,{encoding:'utf8',flag:'r'});
 			txt = txt.replace(/\$\{workspaceFolder\}/g, rootPath.uri.fsPath);
 			txt = txt.replace(/\$\{extensionFolder\}/g, context.extensionPath);
-			vyjson = JSON.parse(txt);
+			let parsed = JSON.parse(txt);
+			vyjson.vdbg_scripts = parsed.vdbg_scripts || vyjson.vdbg_scripts;
+			vyjson.panel_scripts = parsed.panel_scripts || vyjson.panel_scripts;
+			vyjson.access_scripts = parsed.access_scripts || vyjson.access_scripts;
 		} catch(err) {}
-		if (vyjson.panel_scripts) {
-			const access_scripts = vyjson.access_scripts || [];
+		if (vyjson.panel_scripts.length > 0) {
 			const panel = new vyPanel(context.extensionUri, channel);
-			panel.createPanel({},rootPath,vyjson.panel_scripts,access_scripts,function(message:any) {});
+			panel.createPanel({},rootPath,vyjson.panel_scripts,vyjson.access_scripts,function(message:any) {});
 			setInterval(() => {
-				if (panel.disposed() && vyjson.panel_scripts) {
-					panel.createPanel({},rootPath,vyjson.panel_scripts,access_scripts,function(message:any) {});
+				if (panel.disposed() && vyjson.panel_scripts.length > 0) {
+					panel.createPanel({},rootPath,vyjson.panel_scripts,vyjson.access_scripts,function(message:any) {});
 				}
 			},500);
 			return; // can't use both panel_scripts and vdbg_scripts
@@ -62,7 +64,10 @@ export function activate(context: vscode.ExtensionContext) {
 			return {
 				onWillReceiveMessage: async msg => {
 					// console.log(`A ${JSON.stringify(msg, undefined, 2)}`)
-                    if (VDBG && msg?.arguments?.threadId) VDBG.currentThreadId = msg.arguments.threadId;
+                    if (VDBG && msg?.arguments?.threadId) 
+						VDBG.currentThreadId = msg.arguments.threadId;
+                    if (VDBG && msg?.arguments?.frameId) 
+						VDBG.currentFrameId = msg.arguments.frameId;
 				},
 				onDidSendMessage: async msg => {
 					// console.log(`B ${msg.type} ${JSON.stringify(msg, undefined, 2)}`)
@@ -71,15 +76,15 @@ export function activate(context: vscode.ExtensionContext) {
 						triggered = false;
 						if (state == INIT_STATE && lastStackFrame) {
 							state = SETT_STATE;
-							const refresh = (t:vdbg_sources.LanguageDbgType) => { VDBG?.setType(t); };
+							const refresh = (t:vdbg_sources.LanguageDbgType) => { VDBG?.setType(t, vyjson.vdbg_scripts); };
 							const type = session.configuration.type;
 							if (type == 'cppdbg') {
 								type_ = new CppdbgType(VDBG._channel, session, lastStackFrame.id, refresh);
-							} else if (type == 'python') {
+							} else if (type == 'debugpy' || type == 'python') {
 								type_ = new PydbgType(VDBG._channel, session, lastStackFrame.id, refresh);
 							} else {
 								type_ = new vdbg_sources.LanguageDbgType(VDBG._channel, session);
-								VDBG?.setType(type_);
+								VDBG?.setType(type_, vyjson.vdbg_scripts);
 							}
 						}
 					} else if (VDBG && msg.type == 'response' && msg.command == 'variables') { // command = variables|stackTrace|scopes|thread

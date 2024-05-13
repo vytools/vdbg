@@ -1,0 +1,10 @@
+{
+    "vdbg_scripts":[
+        {
+            "config":"(gdb) Launch",
+            "files": [
+                {"src":"${workspaceFolder}/vdbg.js","dst":"vdbg.js"}
+            ]
+        }
+    ]
+}
