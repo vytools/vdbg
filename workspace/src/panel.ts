@@ -23,7 +23,7 @@ const copy_source = function(src:string, dst:vscode.Uri) {
 export interface VyConfigScript {
 	config: string;
 	files: VyScript[];
-};
+}
 
 export interface VyScript {
 	src: string;
@@ -67,15 +67,17 @@ export class vyPanel {
 
 	public createPanel(
 		bpobj:any,
+		label:string,
 		workspace:vscode.WorkspaceFolder,
 		scripts:VyScript[],
 		access:VyAccess[],
-		messageParser:any)
+		messageParser:(message: any) => void,
+		onDispose:() => void)
 	{
 		if (this._panel) return;
 		this._panel = vscode.window.createWebviewPanel(
 			this.viewType,
-			'vdbg',
+			label,
 			vscode.ViewColumn.Two,
 			{
 				enableScripts: true,
@@ -84,23 +86,11 @@ export class vyPanel {
 			},
 		);
 
-		// // Not currently using this but it would be nice if I could. I can't seem to use this with vdbg
-		// // scheme because it's blocked by cors. It's doesn't seem to work either to enhance non blocked ones
-		// // (e.g. vscode-resource) 
-		// this._contentProvider = vscode.workspace.registerTextDocumentContentProvider("vdbg",{
-		// 	provideTextDocumentContent(uri: vscode.Uri): string {
-		// 		return 'console.log("BY JOVE!")';
-		// 	}
-		// });
+		this._panel.onDidDispose(() => {
+			this.dispose();
+			onDispose();
+		}, null, this._disposables);
 
-		// Listen for when the panel is disposed
-		// This happens when the user closes the panel or when the panel is closed programmatically
-		this._panel.onDidDispose(() => { this.dispose(); }, null, this._disposables);
-
-		// Update the content based on view changes, this happens way too much
-		// this._panel.onDidChangeViewState(
-		// 	e => { if (this._panel && this._panel.visible) this._update(); }, null, this._disposables
-		// );
 		// Handle messages from the webview
 		this._panel.webview.onDidReceiveMessage(
 			message => {
@@ -168,7 +158,7 @@ export class vyPanel {
 		const TopLevelFileResource:vscode.Uri = this._panel?.webview.asWebviewUri(TopLevelFileOriginal);
 
 		const panel = this._panel;
-		this._panel.title = 'vdbg';
+		this._panel.title = label;
 		let styles = ['reset.css','bootstrap.min.css','vscode.css'].map(f => {
 			return `<link href="${panel.webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'styles', f))}" rel="stylesheet">`;
 		}).join('\n');

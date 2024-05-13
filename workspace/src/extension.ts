@@ -7,37 +7,37 @@ const fs = require('fs');
 const path = require('path');
 
 import { VyJson, vyPanel } from './panel';
-// https://microsoft.github.io/debug-adapter-protocol/specification
+const channel:vscode.OutputChannel = vscode.window.createOutputChannel("vdbg");
+let CONTEXT_PANEL:vyPanel|undefined;
+const vdbgjson:VyJson = {panel_scripts:[],access_scripts:[],vdbg_scripts:[]}; 
 
-export function activate(context: vscode.ExtensionContext) {
-	const channel:vscode.OutputChannel = vscode.window.createOutputChannel("vdbg");
-	const rootPath = (vscode.workspace.workspaceFolders && (vscode.workspace.workspaceFolders.length > 0))
-		? vscode.workspace.workspaceFolders[0] : undefined;
-	let vyjson:VyJson = {panel_scripts:[],access_scripts:[],vdbg_scripts:[]}; 
-	if (rootPath) {
+function refresh_vdbg(context: vscode.ExtensionContext, update_json_only:boolean) {
+	if (vscode.workspace.workspaceFolders && (vscode.workspace.workspaceFolders.length > 0)) {
+		const rootPath = vscode.workspace.workspaceFolders[0];
 		const pth = path.join(rootPath.uri.fsPath,'.vscode','vdbg.json');
 		try {
 			let txt = fs.readFileSync(pth,{encoding:'utf8',flag:'r'});
 			txt = txt.replace(/\$\{workspaceFolder\}/g, rootPath.uri.fsPath);
 			txt = txt.replace(/\$\{extensionFolder\}/g, context.extensionPath);
-			let parsed = JSON.parse(txt);
-			vyjson.vdbg_scripts = parsed.vdbg_scripts || vyjson.vdbg_scripts;
-			vyjson.panel_scripts = parsed.panel_scripts || vyjson.panel_scripts;
-			vyjson.access_scripts = parsed.access_scripts || vyjson.access_scripts;
+			const parsed = JSON.parse(txt);
+			vdbgjson.vdbg_scripts = parsed.vdbg_scripts || vdbgjson.vdbg_scripts;
+			vdbgjson.panel_scripts = parsed.panel_scripts || vdbgjson.panel_scripts;
+			vdbgjson.access_scripts = parsed.access_scripts || vdbgjson.access_scripts;
 		} catch(err) {}
-		if (vyjson.panel_scripts.length > 0) {
-			const panel = new vyPanel(context.extensionUri, channel);
-			panel.createPanel({},rootPath,vyjson.panel_scripts,vyjson.access_scripts,function(message:any) {});
-			setInterval(() => {
-				if (panel.disposed() && vyjson.panel_scripts.length > 0) {
-					panel.createPanel({},rootPath,vyjson.panel_scripts,vyjson.access_scripts,function(message:any) {});
-				}
-			},500);
-			return; // can't use both panel_scripts and vdbg_scripts
+		if (!update_json_only && CONTEXT_PANEL && vdbgjson.panel_scripts.length > 0) {
+			CONTEXT_PANEL.createPanel({}, "vdbg panel", rootPath, vdbgjson.panel_scripts, vdbgjson.access_scripts, () => undefined,() => {
+				refresh_vdbg(context, false);
+			});
 		}
 	}
+	return vdbgjson;
+}
 
-	let VDBG:vDbgPanel | undefined;
+export function activate(context: vscode.ExtensionContext) {
+	// const vdbgjson = get_vdbg_json(rootPath, context); 
+	CONTEXT_PANEL = new vyPanel(context.extensionUri, channel);
+	refresh_vdbg(context, false);
+	let VDBG_PANEL:vDbgPanel | undefined;
 	let lastStackFrame:vdbg_sources.stackTraceBody|undefined;
 	let triggered = false;
 	const INIT_STATE = 0;
@@ -45,52 +45,54 @@ export function activate(context: vscode.ExtensionContext) {
 	let state = INIT_STATE;
 	let type_:vdbg_sources.LanguageDbgType | undefined;
 	context.subscriptions.push( vscode.debug.onDidStartDebugSession(session => {
-		VDBG?.setSession(session);
+		VDBG_PANEL?.setSession(session);
 	}) );
 	context.subscriptions.push( vscode.debug.onDidTerminateDebugSession(session => {
-		VDBG?.sendMessage({'topic':'__terminate_debug_session__'});
+		VDBG_PANEL?.sendMessage({'topic':'__terminate_debug_session__'});
 		state = INIT_STATE;
 	}) );
 
+	// https://microsoft.github.io/debug-adapter-protocol/specification
 	// context.subscriptions.push( vscode.debug.onDidReceiveDebugSessionCustomEvent(ev => {  }) );
 	// context.subscriptions.push( vscode.debug.onDidChangeBreakpoints(ev => { }) );
 	vscode.debug.registerDebugAdapterTrackerFactory('*', {
 		createDebugAdapterTracker: (session: vscode.DebugSession) => {
-			if (!VDBG || VDBG.disposed()) {
+			refresh_vdbg(context, true);
+			if (!VDBG_PANEL || VDBG_PANEL.disposed()) {
 				state = INIT_STATE;
-				VDBG = new vDbgPanel(context.extensionUri, channel);
+				VDBG_PANEL = new vDbgPanel(context.extensionUri, channel);
 			}
 			
 			return {
 				onWillReceiveMessage: async msg => {
 					// console.log(`A ${JSON.stringify(msg, undefined, 2)}`)
-                    if (VDBG && msg?.arguments?.threadId) 
-						VDBG.currentThreadId = msg.arguments.threadId;
-                    if (VDBG && msg?.arguments?.frameId) 
-						VDBG.currentFrameId = msg.arguments.frameId;
+                    if (VDBG_PANEL && msg?.arguments?.threadId) 
+						VDBG_PANEL.currentThreadId = msg.arguments.threadId;
+                    if (VDBG_PANEL && msg?.arguments?.frameId) 
+						VDBG_PANEL.currentFrameId = msg.arguments.frameId;
 				},
 				onDidSendMessage: async msg => {
 					// console.log(`B ${msg.type} ${JSON.stringify(msg, undefined, 2)}`)
-					if (VDBG && msg.type == 'response' && msg.command == 'stackTrace' && msg.body?.stackFrames?.length > 0) { // command = variables|stackTrace|scopes|thread
+					if (VDBG_PANEL && msg.type == 'response' && msg.command == 'stackTrace' && msg.body?.stackFrames?.length > 0) { // command = variables|stackTrace|scopes|thread
 						lastStackFrame = msg.body.stackFrames[0];
 						triggered = false;
 						if (state == INIT_STATE && lastStackFrame) {
 							state = SETT_STATE;
-							const refresh = (t:vdbg_sources.LanguageDbgType) => { VDBG?.setType(t, vyjson.vdbg_scripts); };
+							const refresh = (t:vdbg_sources.LanguageDbgType) => { VDBG_PANEL?.setType(t, vdbgjson.vdbg_scripts); };
 							const type = session.configuration.type;
 							if (type == 'cppdbg') {
-								type_ = new CppdbgType(VDBG._channel, session, lastStackFrame.id, refresh);
+								type_ = new CppdbgType(VDBG_PANEL._channel, session, lastStackFrame.id, refresh);
 							} else if (type == 'debugpy' || type == 'python') {
-								type_ = new PydbgType(VDBG._channel, session, lastStackFrame.id, refresh);
+								type_ = new PydbgType(VDBG_PANEL._channel, session, lastStackFrame.id, refresh);
 							} else {
-								type_ = new vdbg_sources.LanguageDbgType(VDBG._channel, session);
-								VDBG?.setType(type_, vyjson.vdbg_scripts);
+								type_ = new vdbg_sources.LanguageDbgType(VDBG_PANEL._channel, session);
+								VDBG_PANEL?.setType(type_, vdbgjson.vdbg_scripts);
 							}
 						}
-					} else if (VDBG && msg.type == 'response' && msg.command == 'variables') { // command = variables|stackTrace|scopes|thread
+					} else if (VDBG_PANEL && msg.type == 'response' && msg.command == 'variables') { // command = variables|stackTrace|scopes|thread
 						if (lastStackFrame && !triggered) {
 							triggered = true;
-							VDBG.checkBreakpoint(lastStackFrame); // send in previous stackFrame
+							VDBG_PANEL.checkBreakpoint(lastStackFrame); // send in previous stackFrame
 						}
 					}
 				},

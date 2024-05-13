@@ -1,7 +1,7 @@
 {
 	"name": "vdbg-debugger",
 	"description": "Visual Debugger - An extensible visual debugger",
-	"version": "0.1.0",
+	"version": "0.1.2",
 	"publisher": "vytools",
 	"private": true,
 	"icon": "media/logo128.png",
@@ -19,8 +19,7 @@
 	],
 	"activationEvents": [
 		"onDebug",
-		"workspaceContains:.vscode/vdbg.json",
-		"onWebviewPanel:vDbg"
+		"workspaceContains:.vscode/vdbg.json"
 	],
 	"main": "./out/extension.js",
 	"contributes": {

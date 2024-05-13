@@ -1,4 +1,5 @@
 {
+    "version": "1.0.0",
     "panel_scripts":[
         {"src":"${extensionFolder}/media/builtin/display_results.js","dst":"display_results.js"}
     ],

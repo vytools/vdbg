@@ -29,16 +29,16 @@ export class vDbgPanel extends vyPanel {
 		this._dynamicUri.splice(0,this._dynamicUri.length);
 		if (!(this._session && this._session.workspaceFolder)) return false;
 		const folderUri:vscode.WorkspaceFolder = this._session.workspaceFolder;
-		let configname = this._session.configuration.name;
+		const configname = this._session.configuration.name;
 		let vdbg_scripts:VyScript[] = [];
-		let all_names:string[] = [];
+		const all_names:string[] = [];
 		all_vdbg_scripts.forEach(vs => {
 			all_names.push(vs.config);
 			if (vs.config == configname) vdbg_scripts = vs.files;
-		})
+		});
 		if (vdbg_scripts.length == 0) {
 			if (all_names.length != 0) {
-				vscode.window.showInformationMessage(`vdbg inactive since ${configname} is not in ${all_names.join(',')}`)
+				vscode.window.showInformationMessage(`vdbg inactive since ${configname} is not in ${all_names.join(',')}`);
 			}
 			return;
 		}
@@ -49,7 +49,7 @@ export class vDbgPanel extends vyPanel {
 			o.line = bp.line;
 			return o;
 		});
-		let self = this;
+		const self = this;
 		const messageParser = function(message:any) {
 			if (message.type == 'add_breakpoints') {
 				vscode.debug.addBreakpoints(message.breakpoints.map((bp:any) => {
@@ -84,10 +84,10 @@ export class vDbgPanel extends vyPanel {
 				if (!has(message.arguments,'threadId') && self.currentThreadId) message.arguments.threadId = self.currentThreadId;
 				self._session?.customRequest(message.command, message.arguments).then(response => {
 					if (message.topic) self.sendMessage({topic:message.topic,response:response});
-				})
+				});
 			}
 		};
-		this.createPanel(bpobj, folderUri, vdbg_scripts, access_scripts, messageParser);
+		this.createPanel(bpobj, this._session.configuration.name, folderUri, vdbg_scripts, access_scripts, messageParser, () => undefined);
 	}
 
 	constructor(extensionUri:vscode.Uri, channel:vscode.OutputChannel) {
