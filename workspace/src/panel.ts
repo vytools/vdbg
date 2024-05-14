@@ -98,19 +98,38 @@ export class vyPanel {
 					vscode.window.showErrorMessage(message.text);
 				} else if (message.type == 'write') {
 					try {
-						access.forEach(a => {
-							if (a.label == message.label) fs.writeFileSync(a.src, message.text);
-						});
-					} catch(err) {}
-				} else if (message.type == 'read') {
-					try {
-						access.forEach(a => {
-							if (a.label == message.label && message.callback_topic) {
-								const txt = fs.readFileSync(a.src,{ encoding: 'utf8', flag: 'r' });
-								this.sendMessage({topic:message.callback_topic, data:txt});
+						let found = false;
+						for (let ii = 0; ii < access.length; ii++) {
+							if (access[ii].label == message.label) {
+								found = true;
+								fs.writeFileSync(access[ii].src, message.text);
 							}
-						});
-					} catch(err) {}
+						}
+						if (!found) vscode.window.showErrorMessage(`"${message.label}" could not be written because it hasn't been configured in vdbg.json "access_scripts"`);
+					} catch(err) {
+						vscode.window.showErrorMessage(`"${message.label}" could not be written. ${err}`);
+					}
+				} else if (message.type == 'read') {
+					if (!message.callback_topic) {
+						vscode.window.showErrorMessage(`"${message.label}" not read because no callback topic is required`);
+					} else {
+						try {
+							let found = false;
+							for (let ii = 0; ii < access.length; ii++) {
+								if (access[ii].label == message.label) {
+									found = true;
+									this.sendMessage({
+										topic:message.callback_topic,
+										data:fs.readFileSync(access[ii].src, { encoding: 'utf8', flag: 'r' })
+									});
+									break;
+								}
+							}
+							if (!found) vscode.window.showErrorMessage(`"${message.label}" could not be read because it hasn't been configured in vdbg.json "access_scripts"`);
+						} catch(err) {
+							this.sendMessage({topic:message.callback_topic, error:err});
+						}	
+					}
 				} else if (message.type == 'log' && this._channel) {
 					this._channel.appendLine(message.text);
 				} else if (message.type == 'info') {

@@ -18,8 +18,12 @@ export function load_vdbg(VDBG) {
     try {
       let bd = document.querySelector('#default-Results');
       bd.innerHTML = '';
-      process_results(null, JSON.parse(data.data), bd, true);
-      set_message('info',`Successfully re-loaded output file ${Date()}`);
+      if (data.error) {
+        set_message('danger',`${err}`);
+      } else {
+        process_results(null, JSON.parse(data.data), bd, true);
+        set_message('info',`Successfully re-loaded output file ${Date()}`);
+      }
     } catch(err) {
       set_message('danger',`Failed to process results file. ${err}`);
     }

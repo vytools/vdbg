@@ -15,15 +15,19 @@ function refresh_vdbg(context: vscode.ExtensionContext, update_json_only:boolean
 	if (vscode.workspace.workspaceFolders && (vscode.workspace.workspaceFolders.length > 0)) {
 		const rootPath = vscode.workspace.workspaceFolders[0];
 		const pth = path.join(rootPath.uri.fsPath,'.vscode','vdbg.json');
-		try {
-			let txt = fs.readFileSync(pth,{encoding:'utf8',flag:'r'});
-			txt = txt.replace(/\$\{workspaceFolder\}/g, rootPath.uri.fsPath);
-			txt = txt.replace(/\$\{extensionFolder\}/g, context.extensionPath);
-			const parsed = JSON.parse(txt);
-			vdbgjson.vdbg_scripts = parsed.vdbg_scripts || vdbgjson.vdbg_scripts;
-			vdbgjson.panel_scripts = parsed.panel_scripts || vdbgjson.panel_scripts;
-			vdbgjson.access_scripts = parsed.access_scripts || vdbgjson.access_scripts;
-		} catch(err) {}
+		if (fs.existsSync(pth)) {
+			try {
+				let txt = fs.readFileSync(pth,{encoding:'utf8',flag:'r'});
+				txt = txt.replace(/\$\{workspaceFolder\}/g, rootPath.uri.fsPath);
+				txt = txt.replace(/\$\{extensionFolder\}/g, context.extensionPath);
+				const parsed = JSON.parse(txt);
+				vdbgjson.vdbg_scripts = parsed.vdbg_scripts || vdbgjson.vdbg_scripts;
+				vdbgjson.panel_scripts = parsed.panel_scripts || vdbgjson.panel_scripts;
+				vdbgjson.access_scripts = parsed.access_scripts || vdbgjson.access_scripts;
+			} catch(err) {
+				vscode.window.showErrorMessage('Failed to parse .vscode/vdbg.json');
+			}
+		}
 		if (!update_json_only && CONTEXT_PANEL && vdbgjson.panel_scripts.length > 0) {
 			CONTEXT_PANEL.createPanel({}, "vdbg panel", rootPath, vdbgjson.panel_scripts, vdbgjson.access_scripts, () => undefined,() => {
 				refresh_vdbg(context, false);
