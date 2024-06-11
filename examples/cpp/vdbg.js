@@ -1,5 +1,7 @@
 import { setup_generic_map } from "../../vyjs/js/generic_map.js";
 import { create_panel } from  "../../builtin/button_panel.js";
+import { add_inputs } from "../../builtin/assess_inputs.js";
+
 import * as NAMED_BREAKPOINTS from "../../builtin/named_breakpoints.js";
 
 export function load_vdbg(VDBG) {
@@ -8,7 +10,8 @@ export function load_vdbg(VDBG) {
   document.body.insertAdjacentHTML('beforeend','<div class="content" style="position:absolute; width:100%; height:100%; overflow:hidden; padding:0px; margin:0px"></div>');
   const DRAW_DATA = {plot:[],circles:[]};
   const MAPFUNCS = setup_generic_map(document.querySelector('.content'), DRAW_DATA);
-  NAMED_BREAKPOINTS.toggle(VDBG, create_panel(), ["test"]);
+  const panel = create_panel();
+  NAMED_BREAKPOINTS.toggle(VDBG, panel, ["test"]);
   NAMED_BREAKPOINTS.enable(VDBG, ["function", "sample"]);
   MAPFUNCS.CANVAS.addEventListener('click',function(ev) {
     if (ev.detail == 2) {
@@ -28,6 +31,12 @@ export function load_vdbg(VDBG) {
   VDBG.register_topic('clicksample',(data)=> {
     VDBG.assess({topic:'sample', variables:{x:'xval',y:'yval'}})
   }); 
+  add_inputs(VDBG, panel, {
+    "variable_to_print":{"variables":{"$0":"$0"},"topic":"vdbglog"}
+  })
+  VDBG.register_topic('vdbglog',(data)=> {
+    VDBG.log(data.variables);
+  });
   VDBG.register_topic('sample',(data)=> {
     VDBG.log(data.variables);
     VDBG.info(data.variables);

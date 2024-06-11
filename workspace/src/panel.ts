@@ -47,6 +47,7 @@ export class vyPanel {
 	private readonly _extensionUri: vscode.Uri;
 	protected _panel: vscode.WebviewPanel|undefined;
 	private _disposables: vscode.Disposable[] = [];
+	private _access:VyAccess[] = [];
 	public sendMessage(data: any) {
 		if (this._panel) this._panel.webview.postMessage(data);
 	}
@@ -65,16 +66,63 @@ export class vyPanel {
 		}
 	}
 
+	public messageParser(message:any) {
+		if (message.type == 'error') {
+			vscode.window.showErrorMessage(message.text);
+		} else if (message.type == 'write') {
+			try {
+				let found = false;
+				for (let ii = 0; ii < this._access.length; ii++) {
+					if (this._access[ii].label == message.label) {
+						found = true;
+						fs.writeFileSync(this._access[ii].src, message.text);
+					}
+				}
+				if (!found) vscode.window.showErrorMessage(`"${message.label}" could not be written because it hasn't been configured in vdbg.json "access_scripts"`);
+			} catch(err) {
+				vscode.window.showErrorMessage(`"${message.label}" could not be written. ${err}`);
+			}
+		} else if (message.type == 'read') {
+			if (!message.callback_topic) {
+				vscode.window.showErrorMessage(`"${message.label}" not read because no callback topic is required`);
+			} else {
+				try {
+					let found = false;
+					for (let ii = 0; ii < this._access.length; ii++) {
+						if (this._access[ii].label == message.label) {
+							found = true;
+							this.sendMessage({
+								topic:message.callback_topic,
+								data:fs.readFileSync(this._access[ii].src, { encoding: 'utf8', flag: 'r' })
+							});
+							break;
+						}
+					}
+					if (!found) vscode.window.showErrorMessage(`"${message.label}" could not be read because it hasn't been configured in vdbg.json "access_scripts"`);
+				} catch(err) {
+					this.sendMessage({topic:message.callback_topic, error:err});
+				}	
+			}
+		} else if (message.type == 'log' && this._channel) {
+			this._channel.appendLine(message.text);
+		} else if (message.type == 'info') {
+			vscode.window.showInformationMessage(message.text);
+		} else {
+			return false;
+		}
+		return true;
+	}
+
 	public createPanel(
 		bpobj:any,
 		label:string,
 		workspace:vscode.WorkspaceFolder,
 		scripts:VyScript[],
 		access:VyAccess[],
-		messageParser:(message: any) => void,
 		onDispose:() => void)
 	{
 		if (this._panel) return;
+		this._access = access;
 		this._panel = vscode.window.createWebviewPanel(
 			this.viewType,
 			label,
@@ -93,51 +141,7 @@ export class vyPanel {
 
 		// Handle messages from the webview
 		this._panel.webview.onDidReceiveMessage(
-			message => {
-				if (message.type == 'error') {
-					vscode.window.showErrorMessage(message.text);
-				} else if (message.type == 'write') {
-					try {
-						let found = false;
-						for (let ii = 0; ii < access.length; ii++) {
-							if (access[ii].label == message.label) {
-								found = true;
-								fs.writeFileSync(access[ii].src, message.text);
-							}
-						}
-						if (!found) vscode.window.showErrorMessage(`"${message.label}" could not be written because it hasn't been configured in vdbg.json "access_scripts"`);
-					} catch(err) {
-						vscode.window.showErrorMessage(`"${message.label}" could not be written. ${err}`);
-					}
-				} else if (message.type == 'read') {
-					if (!message.callback_topic) {
-						vscode.window.showErrorMessage(`"${message.label}" not read because no callback topic is required`);
-					} else {
-						try {
-							let found = false;
-							for (let ii = 0; ii < access.length; ii++) {
-								if (access[ii].label == message.label) {
-									found = true;
-									this.sendMessage({
-										topic:message.callback_topic,
-										data:fs.readFileSync(access[ii].src, { encoding: 'utf8', flag: 'r' })
-									});
-									break;
-								}
-							}
-							if (!found) vscode.window.showErrorMessage(`"${message.label}" could not be read because it hasn't been configured in vdbg.json "access_scripts"`);
-						} catch(err) {
-							this.sendMessage({topic:message.callback_topic, error:err});
-						}	
-					}
-				} else if (message.type == 'log' && this._channel) {
-					this._channel.appendLine(message.text);
-				} else if (message.type == 'info') {
-					vscode.window.showInformationMessage(message.text);
-				} else {
-					messageParser(message);
-				}
-			},
+			message => { this.messageParser(message); },
 			null,
 			this._disposables
 		);

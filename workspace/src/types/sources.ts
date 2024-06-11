@@ -55,12 +55,12 @@ export class LanguageDbgType {
 
     public async eval_breakpoint(bp:Vbreakpoint, frameId:number|undefined) {
         if (bp.variables) {
-            let obj = JSON.parse(JSON.stringify(bp));
+            const obj = JSON.parse(JSON.stringify(bp));
 			await this.pre_eval(obj);
             for (const [key, value] of Object.entries(obj.variables)) {
-                let req:any = await this.request_format(value);
+                const req:any = await this.request_format(value);
                 if (frameId) req.frameId = frameId;
-                let response = await this?._session?.customRequest('evaluate', req);
+                const response = await this?._session?.customRequest('evaluate', req);
                 obj.variables[key] = await this.parse(response);
 				// this.channel.appendLine('responseDB: '+JSON.stringify(obj,null,2));
             }
@@ -73,8 +73,8 @@ export class LanguageDbgType {
     }
 
     public check_breakpoint(bpsource:stackTraceBody, callback:Function) {
-        for (var ii = 0; ii < this._vdbgs.breakpoints.length; ii++) {
-            let bp = this._vdbgs.breakpoints[ii];
+        for (let ii = 0; ii < this._vdbgs.breakpoints.length; ii++) {
+            const bp = this._vdbgs.breakpoints[ii];
             if (bp.uri.path == bpsource.source.path && bp.line == bpsource.line && bp.obj) {
                 this.eval_breakpoint(bp.obj, bpsource.id).then((obj:any) => {callback(obj)});
             }
@@ -83,13 +83,13 @@ export class LanguageDbgType {
 }
 
 export function search(sources:Array<string>):Vdbg {
-	let vdbg:Vdbg = {breakpoints:[], snips:[]};
+	const vdbg:Vdbg = {breakpoints:[], snips:[]};
 	sources.forEach(function(pth: string) { // For every file in the list
 		if (fs.existsSync(pth) && fs.statSync(pth).isFile()) {	
 			try {
 				const uri = vscode.Uri.file(pth);
-				let data = fs.readFileSync(pth,{encoding:'utf8', flag:'r'});
-				let matches = data.match(/<vdbg_js([\s\S]*?)vdbg_js>/gm);
+				const data = fs.readFileSync(pth,{encoding:'utf8', flag:'r'});
+				const matches = data.match(/<vdbg_js([\s\S]*?)vdbg_js>/gm);
 				if (matches) {
 					matches.forEach((match:string) => {
 						vdbg.snips.push(match.replace('<vdbg_js','').replace('vdbg_js>',''));
@@ -97,12 +97,12 @@ export function search(sources:Array<string>):Vdbg {
 				}
 				let linecount = 0;
 				data.split('\n').forEach((line:string) => {
-					let matches = line.match( /<vdbg_bp([\s\S]*?)vdbg_bp>/gm);
+					const matches = line.match( /<vdbg_bp([\s\S]*?)vdbg_bp>/gm);
 					if (matches) {
 						matches.forEach((match:string) => {
-							let match2 = match.replace('<vdbg_bp','').replace('vdbg_bp>','');
+							const match2 = match.replace('<vdbg_bp','').replace('vdbg_bp>','');
 							try {
-								let m = JSON.parse(match2);
+								const m = JSON.parse(match2);
 								vdbg.breakpoints.push({file:path.basename(pth),uri:uri,line:linecount+1,obj:m}); // breakpoint at line after (linecount+1)
 							} catch(err) {
 								vscode.window.showErrorMessage(`Invalid vdbg breakpoint at ${pth} line ${linecount}: ${match2}`);
@@ -122,7 +122,7 @@ export function search(sources:Array<string>):Vdbg {
 export function dive(dir: string | undefined, pattern: RegExp):Array<string> {
 	if (!dir) return [];
 	let source:Array<string> = [];
-	let list = fs.readdirSync(dir);
+	const list = fs.readdirSync(dir);
 	list.forEach(function(file: string) { 												// For every file in the list
 		const pth = path.join(dir,file);												// Full path of that file
 		const stat = fs.statSync(pth);													// Get the file's stats

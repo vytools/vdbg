@@ -29,7 +29,7 @@ function refresh_vdbg(context: vscode.ExtensionContext, update_json_only:boolean
 			}
 		}
 		if (!update_json_only && CONTEXT_PANEL && vdbgjson.panel_scripts.length > 0) {
-			CONTEXT_PANEL.createPanel({}, "vdbg panel", rootPath, vdbgjson.panel_scripts, vdbgjson.access_scripts, () => undefined,() => {
+			CONTEXT_PANEL.createPanel({}, "vdbg panel", rootPath, vdbgjson.panel_scripts, vdbgjson.access_scripts, () => {
 				refresh_vdbg(context, false);
 			});
 		}
@@ -82,7 +82,9 @@ export function activate(context: vscode.ExtensionContext) {
 						triggered = false;
 						if (state == INIT_STATE && lastStackFrame) {
 							state = SETT_STATE;
-							const refresh = (t:vdbg_sources.LanguageDbgType) => { VDBG_PANEL?.setType(t, vdbgjson.vdbg_scripts); };
+							const refresh = (t:vdbg_sources.LanguageDbgType) => {
+								VDBG_PANEL?.setType(t, vdbgjson.vdbg_scripts);
+							};
 							const type = session.configuration.type;
 							if (type == 'cppdbg') {
 								type_ = new CppdbgType(VDBG_PANEL._channel, session, lastStackFrame.id, refresh);
