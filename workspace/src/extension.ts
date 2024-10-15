@@ -1,15 +1,21 @@
 import * as vscode from 'vscode';
 import { CppdbgType } from './types/cppdbg';
+import { CppVsDbgType } from './types/cppvsdbg';
 import { PydbgType } from './types/pydbg';
 import { vDbgPanel } from './vdbgpanel';
 import * as vdbg_sources from './types/sources';
 const fs = require('fs');
 const path = require('path');
 
-import { VyJson, vyPanel } from './panel';
+import { VyAccess, VyJson, VyScript, vyPanel } from './panel';
 const channel:vscode.OutputChannel = vscode.window.createOutputChannel("vdbg");
 let CONTEXT_PANEL:vyPanel|undefined;
 const vdbgjson:VyJson = {panel_scripts:[],access_scripts:[],vdbg_scripts:[]}; 
+
+const repl = function(scrpt:VyScript|VyAccess, workspace:string, extpath:string) {
+	scrpt.src = scrpt.src.replace(/\$\{workspaceFolder\}/g, workspace);
+	scrpt.src = scrpt.src.replace(/\$\{extensionFolder\}/g, extpath);
+}
 
 function refresh_vdbg(context: vscode.ExtensionContext, update_json_only:boolean) {
 	if (vscode.workspace.workspaceFolders && (vscode.workspace.workspaceFolders.length > 0)) {
@@ -18,13 +24,22 @@ function refresh_vdbg(context: vscode.ExtensionContext, update_json_only:boolean
 		if (fs.existsSync(pth)) {
 			try {
 				let txt = fs.readFileSync(pth,{encoding:'utf8',flag:'r'});
-				txt = txt.replace(/\$\{workspaceFolder\}/g, rootPath.uri.fsPath);
-				txt = txt.replace(/\$\{extensionFolder\}/g, context.extensionPath);
 				const parsed = JSON.parse(txt);
 				vdbgjson.vdbg_scripts = parsed.vdbg_scripts || vdbgjson.vdbg_scripts;
 				vdbgjson.panel_scripts = parsed.panel_scripts || vdbgjson.panel_scripts;
 				vdbgjson.access_scripts = parsed.access_scripts || vdbgjson.access_scripts;
-			} catch(err) {
+				vdbgjson.vdbg_scripts.forEach((vdbg:any) => {
+					vdbg.files.forEach((file:any) => {
+						repl(file, rootPath.uri.fsPath, context.extensionPath);
+					});
+				});
+				vdbgjson.panel_scripts.forEach((file:any) => {
+					repl(file, rootPath.uri.fsPath, context.extensionPath);
+				});
+				vdbgjson.access_scripts.forEach((file:any) => {
+					repl(file, rootPath.uri.fsPath, context.extensionPath);
+				});
+		} catch(err) {
 				vscode.window.showErrorMessage('Failed to parse .vscode/vdbg.json');
 			}
 		}
@@ -88,9 +103,12 @@ export function activate(context: vscode.ExtensionContext) {
 							const type = session.configuration.type;
 							if (type == 'cppdbg') {
 								type_ = new CppdbgType(VDBG_PANEL._channel, session, lastStackFrame.id, refresh);
+							// } else if (type == 'cppvsdbg') {
+							// 	type_ = new CppVsDbgType(VDBG_PANEL._channel, session, lastStackFrame.id, refresh);
 							} else if (type == 'debugpy' || type == 'python') {
 								type_ = new PydbgType(VDBG_PANEL._channel, session, lastStackFrame.id, refresh);
 							} else {
+								vscode.window.showErrorMessage(`There is no vdbg parser for debug type "${type}"`)
 								type_ = new vdbg_sources.LanguageDbgType(VDBG_PANEL._channel, session);
 								VDBG_PANEL?.setType(type_, vdbgjson.vdbg_scripts);
 							}

@@ -26,6 +26,14 @@ export interface stackTraceBody {
 	source: vscode.Uri;
 }
 
+function paths_are_equal(path1:string, path2:string) {
+	let path1_ = path.resolve(path1);
+	let path2_ = path.resolve(path2);
+	if (process.platform == "win32")
+	  	return path1_.toLowerCase() === path2_.toLowerCase();
+	return path1_ === path2_;
+}
+
 export class LanguageDbgType {
 	protected channel:vscode.OutputChannel;
 	protected _session: vscode.DebugSession | undefined;
@@ -75,7 +83,7 @@ export class LanguageDbgType {
     public check_breakpoint(bpsource:stackTraceBody, callback:Function) {
         for (let ii = 0; ii < this._vdbgs.breakpoints.length; ii++) {
             const bp = this._vdbgs.breakpoints[ii];
-            if (bp.uri.path == bpsource.source.path && bp.line == bpsource.line && bp.obj) {
+            if (paths_are_equal(bp.uri.fsPath, bpsource.source.path) && bp.line == bpsource.line && bp.obj) {
                 this.eval_breakpoint(bp.obj, bpsource.id).then((obj:any) => {callback(obj)});
             }
         }

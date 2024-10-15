@@ -45,6 +45,7 @@ export function load_vdbg(VDBG) {
     MAPFUNCS.draw();
   });
   VDBG.register_topic('fullfunc',(data) => {
+    VDBG.log(data)
     DRAW_DATA.plot = {draw_type:'polygon', strokeStyle:'green', lineWidth:4,
       points:data.variables.xy, scaleSizeToScreen:true, draw_toggle:'plot'};
     MAPFUNCS.centerMapWithDimensions(0,0,5,5)

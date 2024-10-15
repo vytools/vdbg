@@ -6,6 +6,12 @@
             "files": [
                 {"src":"${workspaceFolder}/vdbg.js","dst":"vdbg.js"}
             ]
+        },
+        {
+            "config":"(win/cmake) Launch",
+            "files": [
+                {"src":"${workspaceFolder}/vdbg.js","dst":"vdbg.js"}
+            ]
         }
     ]
 }

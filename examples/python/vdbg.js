@@ -25,8 +25,10 @@ export function load_vdbg(VDBG) {
 			scaleSizeToScreen:true});
 		MAPFUNCS.draw();
 	})
-	VDBG.register_topic('print',VDBG.log);
+	VDBG.register_topic('print',(data)=> {
+		VDBG.log(data)
+	});
 
-	VDBG.info(`Ready!`);
+	VDBG.info(`load_vdbg Ready!`);
 
 }
