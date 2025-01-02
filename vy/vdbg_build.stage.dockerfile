@@ -9,4 +9,4 @@ RUN npm -v
 #VY context .. 
 #VY source node:18-buster
 
-# vytools build --st vdbg_build && docker run -it --rm vy__vdbg_build /bin/bash -c "vsce package && vsce login vytools && vsce publish"
+# vytools build --st vdbg_build && docker run -it --rm -v /tmp:/xxx vy__vdbg_build /bin/bash -c "cp *.vsix /xxx/ && vsce package && vsce login vytools && vsce publish"
