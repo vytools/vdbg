@@ -12,3 +12,5 @@ workspace/media/dynamic/
 examples/cpp/main
 
 workspace/vy_groups/
+
+examples/plot/plot.json

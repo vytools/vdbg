@@ -1,9 +1,4 @@
 {
     "version": "1.0.0",
-    "panel_scripts":[
-        {"src":"${extensionFolder}/media/builtin/display_results.js","dst":"display_results.js"}
-    ],
-    "access_scripts":[
-        {"src":"${workspaceFolder}/test.json","label":"vy_tools_results"}
-    ]
+    "vy_tools_results": "${workspaceFolder}/test.json"
 }

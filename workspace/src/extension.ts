@@ -25,6 +25,13 @@ function refresh_vdbg(context: vscode.ExtensionContext, update_json_only:boolean
 			try {
 				let txt = fs.readFileSync(pth,{encoding:'utf8',flag:'r'});
 				const parsed = JSON.parse(txt);
+				if (parsed.hasOwnProperty("vy_tools_results")) {
+					parsed.panel_scripts = [{src:"${extensionFolder}/media/builtin/display_results.js",dst:"display_results.js"}]
+					parsed.access_scripts = [{src:parsed.vy_tools_results, label:"vy_tools_results"}]
+				} else if (parsed.hasOwnProperty("plotly")) {
+					parsed.panel_scripts = [{src:"${extensionFolder}/media/builtin/plotly.js",dst:"plotly.js"}]
+					parsed.access_scripts = [{src:parsed.plotly, label:"plotly"}]
+				}
 				vdbgjson.vdbg_scripts = parsed.vdbg_scripts || vdbgjson.vdbg_scripts;
 				vdbgjson.panel_scripts = parsed.panel_scripts || vdbgjson.panel_scripts;
 				vdbgjson.access_scripts = parsed.access_scripts || vdbgjson.access_scripts;
