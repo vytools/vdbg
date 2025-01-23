@@ -1,4 +1,4 @@
-import "../../vyjs/js/plotly-2.26.2.min.js"
+import "../../vyjs/js/plotly-3.0rc2.min.js"
 
 export function load_vdbg(VDBG) {
   document.body.style.padding = '0px';
