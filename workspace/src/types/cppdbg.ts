@@ -52,12 +52,13 @@ export class CppdbgType extends vdbg_sources.LanguageDbgType {
     protected cppstr(stri:string) {
         let newstr = stri.slice(stri.indexOf('=') + 1).trim();
         if (newstr.startsWith('"')) return newstr;
+        newstr = newstr.replace(/std::[a-zA-Z0-9_\-]+ of length 0, capacity [0-9]+/g,'[]'); // replace emptys
+        newstr = newstr.replace(/std::[a-zA-Z0-9_\-,\s]+= /g,'');
         if (newstr.indexOf('{') == -1) newstr = newstr.split(/:/g).pop() || '';
+        if (newstr == '[]') return [];
         if (newstr == 'true') return true;
         if (newstr == 'false') return false;
         if (!isNaN(parseFloat(newstr))) return parseFloat(newstr);
-        newstr = newstr.replace(/std::[a-zA-Z0-9_\-]+ of length 0, capacity [0-9]+/g,'[]'); // replace emptys
-        newstr = newstr.replace(/std::[a-zA-Z0-9_\-,\s]+= /g,'');
         newstr = newstr.replace(/nan\(0x8000000000000\)/g,'null'); // nan => null
         newstr = newstr.replace(/\[("[\w]+")\] = /g,'$1:'); // for std::map when a string is used?
         newstr = newstr.replace(/\[([0-9]+)\] = /g,'');		// for std::vector, std::list, std::tuple and std::pair?

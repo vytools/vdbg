@@ -38,7 +38,16 @@ struct XY3 {
   double xx;
 };
 
+struct XY4 {
+  std::vector<int8_t> a = {};
+  std::vector<int8_t> b = {};
+};
+
 void some_stuff() {
+  std::vector<double> xx;
+  // <vdbg_bp {"name":"info","topic":"info","variables":{"x":"xx"}} vdbg_bp>
+  XY4 xy4;
+  // <vdbg_bp {"name":"info","topic":"info","variables":{"x":"xy4"}} vdbg_bp>
   std::unordered_map<std::string, XY1> k;
   XY1 zz(3.3, 4.4);
   k.insert({"hi",XY1(1.0,2.0)});
