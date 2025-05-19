@@ -28,7 +28,6 @@ export function load_vdbg(VDBG) {
       set_message('danger',`Failed to process results file. ${err}`);
     }
   });
-  setInterval(() => {
-    VDBG.read("vy_tools_results","vy_tools_results_callback")
-  },2000);
+  VDBG.read("vy_tools_results","vy_tools_results_callback");
+  VDBG.listen("vy_tools_results","vy_tools_results_callback");
 }

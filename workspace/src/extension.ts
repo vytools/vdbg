@@ -6,7 +6,7 @@ import { vDbgPanel } from './vdbgpanel';
 import * as vdbg_sources from './types/sources';
 const fs = require('fs');
 const path = require('path');
-
+let fileWatchers: vscode.Disposable[] = [];
 import { VyAccess, VyJson, VyScript, vyPanel } from './panel';
 const channel:vscode.OutputChannel = vscode.window.createOutputChannel("vdbg");
 let CONTEXT_PANEL:vyPanel|undefined;
@@ -31,10 +31,10 @@ function refresh_vdbg(context: vscode.ExtensionContext, update_json_only:boolean
 				} else if (parsed.hasOwnProperty("plotly")) {
 					parsed.panel_scripts = [{src:"${extensionFolder}/media/builtin/plotly.js",dst:"plotly.js"}]
 					parsed.access_scripts = [{src:parsed.plotly, label:"plotly"}]
-				}
+				}			
 				vdbgjson.vdbg_scripts = parsed.vdbg_scripts || vdbgjson.vdbg_scripts;
 				vdbgjson.panel_scripts = parsed.panel_scripts || vdbgjson.panel_scripts;
-				vdbgjson.access_scripts = parsed.access_scripts || vdbgjson.access_scripts;
+				vdbgjson.access_scripts = parsed.access_scripts.map((ac:any) => {ac.listen=''; return ac;}) || vdbgjson.access_scripts;
 				vdbgjson.vdbg_scripts.forEach((vdbg:any) => {
 					vdbg.files.forEach((file:any) => {
 						repl(file, rootPath.uri.fsPath, context.extensionPath);
@@ -51,6 +51,21 @@ function refresh_vdbg(context: vscode.ExtensionContext, update_json_only:boolean
 			}
 		}
 		if (!update_json_only && CONTEXT_PANEL && vdbgjson.panel_scripts.length > 0) {
+			fileWatchers.forEach((fileWatcher) => {
+				fileWatcher.dispose();
+			});
+			fileWatchers.length = 0;
+			vdbgjson.access_scripts.forEach((file:any) => {
+				let listener = vscode.workspace.createFileSystemWatcher(file.src).onDidChange((uri) => {
+					const filePath = uri.fsPath;
+					const fileContent = fs.readFileSync(filePath, 'utf8');
+					if (file.listen && file.src === filePath) {
+						CONTEXT_PANEL?.sendMessage({ topic: file.label, data: fileContent });
+					}
+				});
+				fileWatchers.push(listener);
+				context.subscriptions.push(listener);
+			});
 			CONTEXT_PANEL.createPanel({}, "vdbg panel", rootPath, vdbgjson.panel_scripts, vdbgjson.access_scripts, () => {
 				refresh_vdbg(context, false);
 			});

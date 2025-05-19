@@ -33,6 +33,7 @@ export interface VyScript {
 export interface VyAccess {
 	src: string;
 	label: string;
+	listen: string;
 }
 
 export interface VyJson {
@@ -65,10 +66,13 @@ export class vyPanel {
 			});
 		}
 	}
-
 	public messageParser(message:any) {
 		if (message.type == 'error') {
 			vscode.window.showErrorMessage(message.text);
+		} else if (message.type == 'listen') {
+			for (let ii = 0; ii < this._access.length; ii++) {
+				if (this._access[ii].label == message.label) this._access[ii].listen = message.text;
+			}
 		} else if (message.type == 'write') {
 			try {
 				let found = false;
@@ -217,6 +221,9 @@ export class vyPanel {
 		}
 		VDBG.write = function(label, text) {
 			__postMessage__({type:'write', label:label, text:text});
+		}
+		VDBG.listen = function(label, text) {
+			__postMessage__({type:'listen', label:label, text:text});
 		}
 		VDBG.read = function(label, callback_topic) {
 			__postMessage__({type:'read', label:label, callback_topic:callback_topic});
