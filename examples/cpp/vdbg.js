@@ -40,14 +40,14 @@ export function load_vdbg(VDBG) {
   VDBG.register_topic('sample',(data)=> {
     VDBG.log(data.variables);
     VDBG.info(data.variables);
-    DRAW_DATA.circles.push({draw_type:'circle', fillStyle:'red', 
-      x:data.variables.x, y:data.variables.y, radius:4, scaleSizeToScreen:true});
+    DRAW_DATA.circles.push({draw_type:'circle', fill:'red', 
+      x:data.variables.x, y:data.variables.y, radius:4, scale_with_zoom:true});
     MAPFUNCS.draw();
   });
   VDBG.register_topic('fullfunc',(data) => {
     VDBG.log(data)
-    DRAW_DATA.plot = {draw_type:'polygon', strokeStyle:'green', lineWidth:4,
-      points:data.variables.xy, scaleSizeToScreen:true, draw_toggle:'plot'};
+    DRAW_DATA.plot = {draw_type:'polygon', stroke:'green', stroke_width:4,
+      points:data.variables.xy, scale_with_zoom:true, draw_toggle:'plot'};
     MAPFUNCS.centerMapWithDimensions(0,0,5,5)
     MAPFUNCS.draw();
   });

@@ -20,9 +20,9 @@ export function load_vdbg(VDBG) {
 	})
 	VDBG.register_topic('topicB',(data)=> {
 		VDBG.log(data)
-		DRAWDATA.circles.push({draw_type:'circle', strokeStyle:'green', lineWidth:4,
+		DRAWDATA.circles.push({draw_type:'circle', stroke:'green', stroke_width:4,
 			x:data.variables.xy.x, y:data.variables.xy.y, radius:data.variables.xy.radius,
-			scaleSizeToScreen:true});
+			scale_with_zoom:true});
 		MAPFUNCS.draw();
 	})
 	VDBG.register_topic('print',(data)=> {
