@@ -3,6 +3,7 @@
 		"module": "commonjs",
 		"target": "es2019",
 		"lib": ["ES2019"],
+		"skipLibCheck": true,
 		"outDir": "out",
 		"sourceMap": true,
 		"strict": true,

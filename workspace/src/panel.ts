@@ -1,5 +1,7 @@
 import * as vscode from 'vscode';
 import * as vdbg_sources from './types/sources';
+import * as WebSocket from 'ws';
+
 const fs = require('fs');
 const path = require('path');
 
@@ -28,6 +30,7 @@ export interface VyConfigScript {
 export interface VyScript {
 	src: string;
 	dst: string;
+	websocket_port?: number;
 }
 
 export interface VyAccess {
@@ -46,7 +49,9 @@ export class vyPanel {
 	public _channel:vscode.OutputChannel;
 	public readonly viewType = 'vDbg';
 	private readonly _extensionUri: vscode.Uri;
+	private _websocket_clients: WebSocket.WebSocket[] = [];
 	protected _panel: vscode.WebviewPanel|undefined;
+	private _websocket_server: WebSocket.Server|undefined;
 	private _disposables: vscode.Disposable[] = [];
 	private _access:VyAccess[] = [];
 	public sendMessage(data: any) {
@@ -66,6 +71,7 @@ export class vyPanel {
 			});
 		}
 	}
+
 	public messageParser(message:any) {
 		if (message.type == 'error') {
 			vscode.window.showErrorMessage(message.text);
@@ -73,6 +79,10 @@ export class vyPanel {
 			for (let ii = 0; ii < this._access.length; ii++) {
 				if (this._access[ii].label == message.label) this._access[ii].listen = message.text;
 			}
+		} else if (message.type == 'websocket') {
+			this._websocket_clients.forEach(socket => {
+				socket.send(JSON.stringify(message.data));
+			})
 		} else if (message.type == 'write') {
 			try {
 				let found = false;
@@ -115,6 +125,30 @@ export class vyPanel {
 			return false;
 		}
 		return true;
+	}
+
+	public websocketServer(port:number) {
+		if (!this._websocket_server) {
+			this._websocket_server = new WebSocket.Server({ port:port });
+			this._websocket_server.on('connection', ws => {
+				this._websocket_clients.push(ws);
+		  
+				ws.on('message', message => {
+					try {
+						this.sendMessage(JSON.parse(message.toString()))
+					} catch(err) {
+						this._channel?.appendLine('Trouble parsing websocket data: ' + message.toString());
+					}
+				});
+				ws.on('close', () => {
+					this._websocket_clients.splice(this._websocket_clients.indexOf(ws), 1);
+				});
+				ws.on('error', () => {
+					this._websocket_clients.splice(this._websocket_clients.indexOf(ws), 1);
+				});
+			});
+		}
+  
 	}
 
 	public createPanel(
@@ -219,14 +253,17 @@ export class vyPanel {
 			let message = ''; for (var i = 0; i < arguments.length; i++) message += JSON.stringify(arguments[i],null,2)+' ';
 			__postMessage__({type:'info',text:message});
 		}
+		VDBG.websocket = function(data) {
+			__postMessage__({type:'websocket', data});
+		}
 		VDBG.write = function(label, text) {
-			__postMessage__({type:'write', label:label, text:text});
+			__postMessage__({type:'write', label, text});
 		}
 		VDBG.listen = function(label, text) {
-			__postMessage__({type:'listen', label:label, text:text});
+			__postMessage__({type:'listen', label, text});
 		}
 		VDBG.read = function(label, callback_topic) {
-			__postMessage__({type:'read', label:label, callback_topic:callback_topic});
+			__postMessage__({type:'read', label, callback_topic});
 		}
 		VDBG.assess = (data) => {__postMessage__({type:'vdbg_bp', data});}
 		VDBG.add_breakpoints = (bp) => {__postMessage__({type:'add_breakpoints',breakpoints:bp});}
@@ -288,6 +325,14 @@ export class vyPanel {
 			const x = this._disposables.pop();
 			if (x) x.dispose();
 		}
+		for (const ws of this._websocket_clients) {
+			ws.terminate();  // Immediately close connection
+		}
+		this._websocket_clients.length = 0;
+		this._websocket_server?.close(() => {
+			this._channel.appendLine('websocket server closed');
+		});
+		this._websocket_server = undefined;
 		this._panel = undefined;
 		this.clearDynamicFolder();
 	}

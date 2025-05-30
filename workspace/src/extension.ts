@@ -69,6 +69,9 @@ function refresh_vdbg(context: vscode.ExtensionContext, update_json_only:boolean
 			CONTEXT_PANEL.createPanel({}, "vdbg panel", rootPath, vdbgjson.panel_scripts, vdbgjson.access_scripts, () => {
 				refresh_vdbg(context, false);
 			});
+			if (vdbgjson.panel_scripts[0].websocket_port) {
+				CONTEXT_PANEL.websocketServer(vdbgjson.panel_scripts[0].websocket_port);
+			}
 		}
 	}
 	return vdbgjson;
