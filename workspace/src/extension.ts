@@ -60,7 +60,7 @@ function refresh_vdbg(context: vscode.ExtensionContext, update_json_only:boolean
 					const filePath = uri.fsPath;
 					const fileContent = fs.readFileSync(filePath, 'utf8');
 					if (file.listen && file.src === filePath) {
-						CONTEXT_PANEL?.sendMessage({ topic: file.label, data: fileContent });
+						CONTEXT_PANEL?.sendMessage({ topic: file.listen, data: fileContent });
 					}
 				});
 				fileWatchers.push(listener);
