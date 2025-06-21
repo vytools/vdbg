@@ -1,0 +1,6 @@
+node_modules
+out
+.vscode
+build.sh
+.dockerignore
+Dockerfile
