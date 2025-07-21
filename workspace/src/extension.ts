@@ -34,7 +34,7 @@ function refresh_vdbg(context: vscode.ExtensionContext, update_json_only:boolean
 				}			
 				vdbgjson.vdbg_scripts = parsed.vdbg_scripts || vdbgjson.vdbg_scripts;
 				vdbgjson.panel_scripts = parsed.panel_scripts || vdbgjson.panel_scripts;
-				vdbgjson.access_scripts = parsed.access_scripts.map((ac:any) => {ac.listen=''; return ac;}) || vdbgjson.access_scripts;
+				vdbgjson.access_scripts = (parsed.access_scripts) ? parsed.access_scripts.map((ac:any) => {ac.listen=''; return ac;}) : vdbgjson.access_scripts;
 				vdbgjson.vdbg_scripts.forEach((vdbg:any) => {
 					vdbg.files.forEach((file:any) => {
 						repl(file, rootPath.uri.fsPath, context.extensionPath);
