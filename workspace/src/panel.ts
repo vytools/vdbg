@@ -75,10 +75,6 @@ export class vyPanel {
 	public messageParser(message:any) {
 		if (message.type == 'error') {
 			vscode.window.showErrorMessage(message.text);
-		} else if (message.type == 'listen') {
-			for (let ii = 0; ii < this._access.length; ii++) {
-				if (this._access[ii].label == message.label) this._access[ii].listen = message.text;
-			}
 		} else if (message.type == 'websocket') {
 			this._websocket_clients.forEach(socket => {
 				socket.send(JSON.stringify(message.data));
@@ -96,7 +92,7 @@ export class vyPanel {
 			} catch(err) {
 				vscode.window.showErrorMessage(`"${message.label}" could not be written. ${err}`);
 			}
-		} else if (message.type == 'read') {
+		} else if (message.type == 'read' || message.type == 'listen') {
 			if (!message.callback_topic) {
 				vscode.window.showErrorMessage(`"${message.label}" not read because no callback topic is required`);
 			} else {
@@ -105,6 +101,9 @@ export class vyPanel {
 					for (let ii = 0; ii < this._access.length; ii++) {
 						if (this._access[ii].label == message.label) {
 							found = true;
+							if (message.type == 'listen') {
+								this._access[ii].listen = message.callback_topic;
+							}
 							this.sendMessage({
 								topic:message.callback_topic,
 								data:fs.readFileSync(this._access[ii].src, { encoding: 'utf8', flag: 'r' })
@@ -259,8 +258,8 @@ export class vyPanel {
 		VDBG.write = function(label, text) {
 			__postMessage__({type:'write', label, text});
 		}
-		VDBG.listen = function(label, text) {
-			__postMessage__({type:'listen', label, text});
+		VDBG.listen = function(label, callback_topic) {
+			__postMessage__({type:'listen', label, callback_topic});
 		}
 		VDBG.read = function(label, callback_topic) {
 			__postMessage__({type:'read', label, callback_topic});
