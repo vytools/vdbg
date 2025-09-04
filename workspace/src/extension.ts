@@ -34,7 +34,9 @@ function refresh_vdbg(context: vscode.ExtensionContext, update_json_only:boolean
 				}			
 				vdbgjson.vdbg_scripts = parsed.vdbg_scripts || vdbgjson.vdbg_scripts;
 				vdbgjson.panel_scripts = parsed.panel_scripts || vdbgjson.panel_scripts;
-				vdbgjson.access_scripts = (parsed.access_scripts) ? parsed.access_scripts.map((ac:any) => {ac.listen=''; return ac;}) : vdbgjson.access_scripts;
+				vdbgjson.access_scripts = (parsed.access_scripts) ? parsed.access_scripts.map((ac:any) => {
+					ac.listen=''; return ac;
+				}) : vdbgjson.access_scripts;
 				vdbgjson.vdbg_scripts.forEach((vdbg:any) => {
 					vdbg.files.forEach((file:any) => {
 						repl(file, rootPath.uri.fsPath, context.extensionPath);
@@ -46,7 +48,10 @@ function refresh_vdbg(context: vscode.ExtensionContext, update_json_only:boolean
 				vdbgjson.access_scripts.forEach((file:any) => {
 					repl(file, rootPath.uri.fsPath, context.extensionPath);
 				});
-		} catch(err) {
+				vdbgjson.access_scripts.forEach((ac:any) => {
+					ac.src = path.resolve(ac.src)
+				});
+			} catch(err) {
 				vscode.window.showErrorMessage('Failed to parse .vscode/vdbg.json');
 			}
 		}
@@ -56,7 +61,9 @@ function refresh_vdbg(context: vscode.ExtensionContext, update_json_only:boolean
 			});
 			fileWatchers.length = 0;
 			vdbgjson.access_scripts.forEach((file:any) => {
-				let listener = vscode.workspace.createFileSystemWatcher(file.src).onDidChange((uri) => {
+				const pth = vscode.Uri.file(path.dirname(file.src));
+				const pattern = new vscode.RelativePattern( pth, path.basename(file.src));
+				let listener = vscode.workspace.createFileSystemWatcher(pattern).onDidChange((uri) => {
 					const filePath = uri.fsPath;
 					const fileContent = fs.readFileSync(filePath, 'utf8');
 					if (file.listen && file.src === filePath) {
