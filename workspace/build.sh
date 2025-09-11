@@ -4,6 +4,7 @@ cd $DIR
 docker buildx build --progress=plain --load --platform linux/amd64 -t vdbg .
 docker run --rm -it vdbg ls
 docker run --rm -it -v "$DIR":/mytmp vdbg sh -c "cp *.vsix /mytmp"
+docker run --rm -it -v "$DIR":/mytmp vdbg sh -c "cp package-lock.json /mytmp"
 sudo chown $USER:$USER *.vsix
 while true; do
     read -p "Do you wish to publish this extension? " yn
