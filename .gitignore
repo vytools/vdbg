@@ -16,3 +16,4 @@ workspace/vy_groups/
 examples/plot/plot.json
 
 examples/display_results/test.json
+examples/cpp/*.html

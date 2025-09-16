@@ -130,7 +130,7 @@ export function activate(context: vscode.ExtensionContext) {
 						if (state == INIT_STATE && lastStackFrame) {
 							state = SETT_STATE;
 							const refresh = (t:vdbg_sources.LanguageDbgType) => {
-								VDBG_PANEL?.setType(t, vdbgjson.vdbg_scripts);
+								VDBG_PANEL?.setType(t, vdbgjson.vdbg_scripts, vdbgjson.access_scripts);
 							};
 							const type = session.configuration.type;
 							if (type == 'cppdbg') {
@@ -142,7 +142,7 @@ export function activate(context: vscode.ExtensionContext) {
 							} else {
 								vscode.window.showErrorMessage(`There is no vdbg parser for debug type "${type}"`)
 								type_ = new vdbg_sources.LanguageDbgType(VDBG_PANEL._channel, session);
-								VDBG_PANEL?.setType(type_, vdbgjson.vdbg_scripts);
+								VDBG_PANEL?.setType(type_, vdbgjson.vdbg_scripts, vdbgjson.access_scripts);
 							}
 						}
 					} else if (VDBG_PANEL && msg.type == 'response' && msg.command == 'variables') { // command = variables|stackTrace|scopes|thread

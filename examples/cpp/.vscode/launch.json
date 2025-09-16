@@ -1,24 +1,25 @@
 {
-    "version": "0.2.0",
-    "configurations": [
-        {
-            "name": "(gdb) Launch",
-            "type": "cppdbg",
-            "request": "launch",
-            "program": "${workspaceFolder}/main",
-            "args": [],
-            "stopAtEntry": true,
-            "cwd": "${fileDirname}",
-            "environment": [],
-            "externalConsole": false,
-            "MIMode": "gdb",
-            "setupCommands": []
-        },
-        {
-            "name": "(win/cmake) Launch",
-            "type": "cppvsdbg",
-            "request": "launch",
-            "program": "${workspaceFolder}/build/Debug/bisection.exe"
-        }
-    ]
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug Bisection",
+      "request": "launch",
+      "type": "cppdbg",
+      "program": "${workspaceFolder}/build/bisection",          // Linux default
+      "cwd": "${workspaceFolder}",
+      "args": [],
+      "stopAtEntry": false,
+      "externalConsole": false,
+      "MIMode": "gdb",
+      "linux": {
+        "type": "cppdbg",
+        "program": "${workspaceFolder}/build/bisection",
+        "MIMode": "gdb"
+      },
+      "windows": {
+        "type": "cppvsdbg",
+        "program": "${workspaceFolder}/build/Debug/bisection.exe"
+      }
+    }
+  ]
 }

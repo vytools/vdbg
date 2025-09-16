@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import * as vdbg_sources from './types/sources';
-import { VyConfigScript, VyScript, vyPanel } from './panel';
+import { VyAccess, VyConfigScript, VyScript, vyPanel } from './panel';
 // https://microsoft.github.io/debug-adapter-protocol/specification
 const has = function(obj:any, prop:string) {
 	return Object.prototype.hasOwnProperty.call(obj,prop);
@@ -65,7 +65,7 @@ export class vDbgPanel extends vyPanel {
 		return true;
 	};
 
-	public setType(variable_parser:vdbg_sources.LanguageDbgType, all_vdbg_scripts:VyConfigScript[]) {
+	public setType(variable_parser:vdbg_sources.LanguageDbgType, all_vdbg_scripts:VyConfigScript[], access_scripts:VyAccess[]) {
 		this._channel?.clear();
 		this._variable_parser = variable_parser;
 		this._dynamicUri.splice(0,this._dynamicUri.length);
@@ -84,7 +84,6 @@ export class vDbgPanel extends vyPanel {
 			}
 			return;
 		}
-		const access_scripts = this._session.configuration.access_scripts || [];
 		const bpobj:any = this._variable_parser.get_vdbg().breakpoints.map(bp => { 
 			const o = JSON.parse(JSON.stringify(bp.obj));
 			o.path = bp.uri.fsPath;

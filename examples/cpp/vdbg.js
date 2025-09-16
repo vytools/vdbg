@@ -7,7 +7,8 @@ import * as NAMED_BREAKPOINTS from "../../builtin/named_breakpoints.js";
 export function load_vdbg(VDBG) {
   document.body.style.padding = '0px';
   document.body.style.margin = '0px';
-  document.body.insertAdjacentHTML('beforeend','<div class="content" style="position:absolute; width:100%; height:100%; overflow:hidden; padding:0px; margin:0px"></div>');
+  document.body.insertAdjacentHTML('beforeend',`<div class="content" style="position:absolute; width:100%; height:100%; overflow:hidden; padding:0px; margin:0px">
+    <button class="btn btn-dark btn-sm export" style="position:absolute; right:20px; top:20px; width:30px">&darr;</button></div>`);
   const DRAW_DATA = {plot:[],circles:[]};
   const MAPFUNCS = setup_generic_map(document.querySelector('.content'), DRAW_DATA);
   const panel = create_panel();
@@ -27,6 +28,9 @@ export function load_vdbg(VDBG) {
     }
   });
   window.resizemap = function(event) { MAPFUNCS.resize(); }
+  document.querySelector('button.export').addEventListener('click', (ev) => {
+    VDBG.write("debug_export", MAPFUNCS.export());
+  })
   VDBG.register_topic('info',VDBG.info); 
   VDBG.register_topic('clicksample',(data)=> {
     VDBG.assess({topic:'sample', variables:{x:'xval',y:'yval'}})

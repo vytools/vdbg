@@ -1,14 +1,11 @@
 {
     "version": "1.0.0",
+    "access_scripts":[
+        {"src":"${workspaceFolder}/export.html","label":"debug_export"}
+    ],
     "vdbg_scripts":[
         {
-            "config":"(gdb) Launch",
-            "files": [
-                {"src":"${workspaceFolder}/vdbg.js","dst":"vdbg.js"}
-            ]
-        },
-        {
-            "config":"(win/cmake) Launch",
+            "config":"Debug Bisection",
             "files": [
                 {"src":"${workspaceFolder}/vdbg.js","dst":"vdbg.js"}
             ]
