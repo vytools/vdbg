@@ -4,8 +4,9 @@
 	"version": "2.0.0",
 	"tasks": [
 		{
+			"label": "esbuild-watch",
 			"type": "npm",
-			"script": "watch",
+			"script": "esbuild",
 			"problemMatcher": "$tsc-watch",
 			"isBackground": true,
 			"presentation": {

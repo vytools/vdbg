@@ -9,10 +9,10 @@
 			"name": "Run Extension",
 			"type": "extensionHost",
 			"request": "launch",
-			"runtimeExecutable": "${execPath}",
-			"outputCapture": "console",
-			"args": ["--extensionDevelopmentPath=${workspaceRoot}"],
-			"preLaunchTask": "npm: watch"
+			"args": [
+				"--extensionDevelopmentPath=${workspaceFolder}"
+			],
+			"preLaunchTask": "esbuild-watch", // This will run the esbuild-watch task
 		}
 	]
 }

@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import * as vdbg_sources from './types/sources';
-import * as WebSocket from 'ws';
+import { WebSocketServer, WebSocket } from "ws";
+
 import { micromark } from 'micromark';
 import { math, mathHtml } from 'micromark-extension-math';
 import { gfm, gfmHtml } from 'micromark-extension-gfm';
@@ -70,9 +71,9 @@ export class vyPanel {
 	public _channel:vscode.OutputChannel;
 	public readonly viewType = 'vDbg';
 	private readonly _extensionUri: vscode.Uri;
-	private _websocket_clients: WebSocket.WebSocket[] = [];
+	private _websocket_clients: WebSocket[] = [];
 	protected _panel: vscode.WebviewPanel|undefined;
-	private _websocket_server: WebSocket.Server|undefined;
+	private _websocket_server: WebSocketServer|undefined;
 	private _disposables: vscode.Disposable[] = [];
 	private _access:VyAccess[] = [];
 	public sendMessage(data: any) {
@@ -147,7 +148,7 @@ export class vyPanel {
 
 	public websocketServer(port:number) {
 		if (!this._websocket_server) {
-			this._websocket_server = new WebSocket.Server({ port:port });
+			this._websocket_server = new WebSocketServer({ port });
 			this._websocket_server.on('connection', ws => {
 				this._websocket_clients.push(ws);
 		  
@@ -189,7 +190,6 @@ export class vyPanel {
 				localResourceRoots: [
 					vscode.Uri.joinPath(this._extensionUri, 'media'),
 					vscode.Uri.joinPath(this._extensionUri, 'node_modules', 'katex', 'dist'),
-					vscode.Uri.joinPath(this._extensionUri, 'node_modules', 'highlight.js', 'styles'),
 				]
 			},
 		);
