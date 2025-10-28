@@ -1,5 +1,8 @@
 {
     "version": "1.0.0",
+    "access_scripts":[
+        {"src":"${workspaceFolder}/.vscode/test.md","label":"test.md"}
+    ],
     "panel_scripts":[
         {"src":"${workspaceFolder}/.vscode/localhost.js","dst":"localhost.js"}
     ]

@@ -1,6 +1,10 @@
 import * as vscode from 'vscode';
 import * as vdbg_sources from './types/sources';
 import * as WebSocket from 'ws';
+import { micromark } from 'micromark';
+import { math, mathHtml } from 'micromark-extension-math';
+import { gfm, gfmHtml } from 'micromark-extension-gfm';
+import hljs from 'highlight.js';
 
 const fs = require('fs');
 const path = require('path');
@@ -43,6 +47,23 @@ export interface VyJson {
 	panel_scripts: VyScript[];
 	access_scripts: VyAccess[];
 	vdbg_scripts: VyConfigScript[];
+}
+
+export function read_file_data(src: string) {
+	let data = fs.readFileSync(src, { encoding: 'utf8', flag: 'r' });
+	if (src.endsWith('.md')) {
+		data = micromark(data, {
+			allowDangerousHtml:true,
+			extensions: [math(), gfm()],
+			htmlExtensions: [mathHtml(), gfmHtml()]
+		}).replace(
+		/<pre><code(?: class="language-(.+?)")?>([\s\S]*?)<\/code><\/pre>/g,
+		(_, lang, code) => {
+			const { value } = hljs.highlight(code, { language: lang || 'plaintext' });
+			return `<pre><code class="hljs language-${lang}">${value}</code></pre>`;
+		});
+	}
+	return data;
 }
 
 export class vyPanel {
@@ -104,10 +125,8 @@ export class vyPanel {
 							if (message.type == 'listen') {
 								this._access[ii].listen = message.callback_topic;
 							}
-							this.sendMessage({
-								topic:message.callback_topic,
-								data:fs.readFileSync(this._access[ii].src, { encoding: 'utf8', flag: 'r' })
-							});
+							let data = read_file_data(this._access[ii].src);
+							this.sendMessage({topic:message.callback_topic, data});
 							break;
 						}
 					}
@@ -167,14 +186,15 @@ export class vyPanel {
 			{
 				enableScripts: true,
 				retainContextWhenHidden: true,
-				localResourceRoots: [vscode.Uri.joinPath(this._extensionUri, 'media')]
+				localResourceRoots: [
+					vscode.Uri.joinPath(this._extensionUri, 'media'),
+					vscode.Uri.joinPath(this._extensionUri, 'node_modules', 'katex', 'dist'),
+					vscode.Uri.joinPath(this._extensionUri, 'node_modules', 'highlight.js', 'styles'),
+				]
 			},
 		);
 
-		this._panel.onDidDispose(() => {
-			this.dispose();
-			onDispose();
-		}, null, this._disposables);
+		this._panel.onDidDispose(() => { this.dispose(); onDispose(); }, null, this._disposables);
 
 		// Handle messages from the webview
 		this._panel.webview.onDidReceiveMessage(
@@ -216,15 +236,17 @@ export class vyPanel {
 		}
 		
 		const TopLevelFileResource:vscode.Uri = this._panel?.webview.asWebviewUri(TopLevelFileOriginal);
-
 		const panel = this._panel;
 		this._panel.title = label;
-		let styles = ['reset.css','bootstrap.min.css','vscode.css'].map(f => {
-			return `<link href="${panel.webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'styles', f))}" rel="stylesheet">`;
-		}).join('\n');
-		styles += ['flex.css'].map(f => {
-			return `<link href="${panel.webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'vyjs', 'css', f))}" rel="stylesheet">`;
-		}).join('\n');
+
+		let katexCSS = vscode.Uri.joinPath(this._extensionUri, 'node_modules', 'katex', 'dist', 'katex.min.css');
+		let flexCSS = vscode.Uri.joinPath(this._extensionUri, 'media', 'vyjs', 'css', 'flex.css');
+		let stylelist = ['reset.css','bootstrap.min.css','vscode.css','markdown.css','highlight.css'].map(f => {
+			return vscode.Uri.joinPath(this._extensionUri, 'media', 'styles', f);
+		});
+		let styles = stylelist.concat([flexCSS, katexCSS]).map(f => 
+			`<link href="${panel.webview.asWebviewUri(f)}" rel="stylesheet">`).join('\n');
+
 		this._panel.webview.html = `
 		<!DOCTYPE html>
 		<html lang="en">
@@ -233,7 +255,6 @@ export class vyPanel {
 				<meta name="viewport" content="width=device-width, initial-scale=1.0">
 				${styles}
 			</head>
-			<body>
 		<script type="module">
 		const __topic_functions__ = {}
 		const __api__ = acquireVsCodeApi();
@@ -301,7 +322,8 @@ export class vyPanel {
 		});
 
 		</script>
-			</body>
+		<body>
+		</body>
 		</html>`;
 
 		this._panel.reveal();

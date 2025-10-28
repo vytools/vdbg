@@ -3,6 +3,7 @@ import { CppdbgType } from './types/cppdbg';
 import { CppVsDbgType } from './types/cppvsdbg';
 import { PydbgType } from './types/pydbg';
 import { vDbgPanel } from './vdbgpanel';
+import { read_file_data } from './panel';
 import * as vdbg_sources from './types/sources';
 const fs = require('fs');
 const path = require('path');
@@ -65,9 +66,8 @@ function refresh_vdbg(context: vscode.ExtensionContext, update_json_only:boolean
 				const pattern = new vscode.RelativePattern( pth, path.basename(file.src));
 				let listener = vscode.workspace.createFileSystemWatcher(pattern).onDidChange((uri) => {
 					const filePath = uri.fsPath;
-					const fileContent = fs.readFileSync(filePath, 'utf8');
 					if (file.listen && file.src === filePath) {
-						CONTEXT_PANEL?.sendMessage({ topic: file.listen, data: fileContent });
+						CONTEXT_PANEL?.sendMessage({ topic: file.listen, data: read_file_data(filePath) });
 					}
 				});
 				fileWatchers.push(listener);
