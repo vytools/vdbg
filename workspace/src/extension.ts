@@ -67,7 +67,7 @@ function refresh_vdbg(context: vscode.ExtensionContext, update_json_only:boolean
 				let listener = vscode.workspace.createFileSystemWatcher(pattern).onDidChange((uri) => {
 					const filePath = uri.fsPath;
 					if (file.listen && file.src === filePath) {
-						CONTEXT_PANEL?.sendMessage({ topic: file.listen, data: read_file_data(filePath) });
+						CONTEXT_PANEL?.sendMessage({ topic: file.listen, data: read_file_data(file) });
 					}
 				});
 				fileWatchers.push(listener);

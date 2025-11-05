@@ -40,6 +40,7 @@ export interface VyScript {
 
 export interface VyAccess {
 	src: string;
+	markdown: Boolean;
 	label: string;
 	listen: string;
 }
@@ -50,9 +51,9 @@ export interface VyJson {
 	vdbg_scripts: VyConfigScript[];
 }
 
-export function read_file_data(src: string) {
-	let data = fs.readFileSync(src, { encoding: 'utf8', flag: 'r' });
-	if (src.endsWith('.md')) {
+export function read_file_data(fle: VyAccess) {
+	let data = fs.readFileSync(fle.src, { encoding: 'utf8', flag: 'r' });
+	if (fle.markdown) {
 		data = micromark(data, {
 			allowDangerousHtml:true,
 			extensions: [math(), gfm()],
@@ -126,7 +127,7 @@ export class vyPanel {
 							if (message.type == 'listen') {
 								this._access[ii].listen = message.callback_topic;
 							}
-							let data = read_file_data(this._access[ii].src);
+							let data = read_file_data(this._access[ii]);
 							this.sendMessage({topic:message.callback_topic, data});
 							break;
 						}
