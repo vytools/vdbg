@@ -73,7 +73,7 @@ function refresh_vdbg(context: vscode.ExtensionContext, update_json_only:boolean
 				fileWatchers.push(listener);
 				context.subscriptions.push(listener);
 			});
-			CONTEXT_PANEL.createPanel({}, "vdbg panel", rootPath, vdbgjson.panel_scripts, vdbgjson.access_scripts, () => {
+			CONTEXT_PANEL.createPanel({}, vdbgjson.panel_scripts[0].dst.replace('.js',''), rootPath, vdbgjson.panel_scripts, vdbgjson.access_scripts, () => {
 				refresh_vdbg(context, false);
 			});
 			if (vdbgjson.panel_scripts[0].websocket_port) {
