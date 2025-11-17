@@ -195,7 +195,10 @@ export class vyPanel {
 			},
 		);
 
-		this._panel.onDidDispose(() => { this.dispose(); onDispose(); }, null, this._disposables);
+		this._panel.onDidDispose(async () => {
+			await this.dispose();
+			onDispose();
+		}, null, this._disposables);
 
 		// Handle messages from the webview
 		this._panel.webview.onDidReceiveMessage(
@@ -339,10 +342,9 @@ export class vyPanel {
 		return this._disposables.length == 0;
 	}
 
-	public dispose() {
+	public async dispose() {
 		// Clean up our resources
 		if (this._panel) this._panel.dispose();
-		// this._contentProvider.dispose();
 		while (this._disposables.length) {
 			const x = this._disposables.pop();
 			if (x) x.dispose();
@@ -351,9 +353,13 @@ export class vyPanel {
 			ws.terminate();  // Immediately close connection
 		}
 		this._websocket_clients.length = 0;
-		this._websocket_server?.close(() => {
-			this._channel.appendLine('websocket server closed');
+		await new Promise<void>(resolve => {
+			this._websocket_server!.close(() => {
+				this._channel.appendLine('WebSocket server fully closed');
+				resolve();
+			});
 		});
+		this._channel.appendLine('WebSocket server removed');
 		this._websocket_server = undefined;
 		this._panel = undefined;
 		this.clearDynamicFolder();
