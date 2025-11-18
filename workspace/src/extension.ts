@@ -3,7 +3,7 @@ import { CppdbgType } from './types/cppdbg';
 import { CppVsDbgType } from './types/cppvsdbg';
 import { PydbgType } from './types/pydbg';
 import { vDbgPanel } from './vdbgpanel';
-import { read_file_data, appendLine } from './panel';
+import { read_file_data } from './panel';
 import { VyAccess, VyJson, VyScript, vyPanel } from './panel';
 import * as vdbg_sources from './types/sources';
 const fs = require('fs');
@@ -42,13 +42,11 @@ const repl = function(scrpt:VyScript|VyAccess, workspace:string, extpath:string)
 }
 
 const cleanup = async function() {
-	appendLine(EXTENSION_SINGLETON.channel,'cleanupA')
 	EXTENSION_SINGLETON.fileWatchers.forEach((fileWatcher) => {
 		fileWatcher.dispose();
 	});
 	EXTENSION_SINGLETON.fileWatchers.length = 0;
 	await EXTENSION_SINGLETON.contextPanel?.dispose();
-	appendLine(EXTENSION_SINGLETON.channel,'cleanupB')
 } 
 
 async function refresh_vdbg(context: vscode.ExtensionContext, update_json_only:boolean) {
@@ -91,8 +89,7 @@ async function refresh_vdbg(context: vscode.ExtensionContext, update_json_only:b
 			}
 		}
 		if (!update_json_only && EXTENSION_SINGLETON.contextPanel && vdbgjson.panel_scripts.length > 0) {
-			appendLine(EXTENSION_SINGLETON.channel, EXTENSION_SINGLETON.fileWatchers.length+' filewatchers')
-			cleanup();
+			await cleanup();
 			vdbgjson.access_scripts.forEach((file:any) => {
 				const pth = vscode.Uri.file(path.dirname(file.src));
 				const pattern = new vscode.RelativePattern( pth, path.basename(file.src));
@@ -113,9 +110,6 @@ async function refresh_vdbg(context: vscode.ExtensionContext, update_json_only:b
 					refresh_vdbg(context, false);
 				}
 			});
-			if (vdbgjson.panel_scripts[0].websocket_port) {
-				await EXTENSION_SINGLETON.contextPanel?.websocketServer(vdbgjson.panel_scripts[0].websocket_port);
-			}
 		}
 	}
 	return vdbgjson;
@@ -123,19 +117,12 @@ async function refresh_vdbg(context: vscode.ExtensionContext, update_json_only:b
 
 export async function deactivate() {
     EXTENSION_SINGLETON.isDeactivating = true;
-	cleanup();
+	await cleanup();
 	EXTENSION_SINGLETON.contextPanel = undefined;
 }
-appendLine(EXTENSION_SINGLETON.channel,'NEWWW')
+
 export async function activate(context: vscode.ExtensionContext) {
 
-	context.subscriptions.push(
-        vscode.workspace.onDidChangeWorkspaceFolders(() => {
-			appendLine(EXTENSION_SINGLETON.channel,'triggeredA')
-			EXTENSION_SINGLETON.contextPanel?.dispose();
-            refresh_vdbg(context, false);
-        })
-    );
 	// const vdbgjson = get_vdbg_json(rootPath, context); 
 	EXTENSION_SINGLETON.contextPanel = new vyPanel(context.extensionUri, EXTENSION_SINGLETON.channel);
 	await refresh_vdbg(context, false);
