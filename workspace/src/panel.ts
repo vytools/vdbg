@@ -68,6 +68,10 @@ export function read_file_data(fle: VyAccess) {
 	return data;
 }
 
+export function appendLine(channel:vscode.OutputChannel|undefined, str:string) {
+	channel?.appendLine(str);
+}
+
 export class vyPanel {
 	public _channel:vscode.OutputChannel;
 	public readonly viewType = 'vDbg';
@@ -147,28 +151,37 @@ export class vyPanel {
 		return true;
 	}
 
-	public websocketServer(port:number) {
-		if (!this._websocket_server) {
-			this._websocket_server = new WebSocketServer({ port });
-			this._websocket_server.on('connection', ws => {
-				this._websocket_clients.push(ws);
-		  
-				ws.on('message', message => {
-					try {
-						this.sendMessage(JSON.parse(message.toString()))
-					} catch(err) {
-						this._channel?.appendLine('Trouble parsing websocket data: ' + message.toString());
-					}
-				});
-				ws.on('close', () => {
-					this._websocket_clients.splice(this._websocket_clients.indexOf(ws), 1);
-				});
-				ws.on('error', () => {
-					this._websocket_clients.splice(this._websocket_clients.indexOf(ws), 1);
-				});
+	public async websocketServer(port:number) {
+		appendLine(this._channel,`Trying to create websocketServer ${port}`);
+		if (this._websocket_server) await this.dispose_websocket_server();
+		this._websocket_server = new WebSocketServer({ port });
+		this._websocket_server.on('error', (err) => {
+			if ((err as NodeJS.ErrnoException).code === 'EADDRINUSE') {
+				appendLine(this._channel,`Port ${port} already in use.`);
+			} else {
+				appendLine(this._channel,`WebSocket server error: ${err}`);
+			}
+		});
+
+		this._websocket_server.on('connection', ws => {
+			appendLine(this._channel,`WebSocket server ${port} connected`)
+			this._websocket_clients.push(ws);
+			ws.on('message', message => {
+				try {
+					this.sendMessage(JSON.parse(message.toString()));
+				} catch(err) {
+					appendLine(this._channel,`Trouble parsing websocket ${port} data: ${message.toString()}`);
+				}
 			});
-		}
-  
+			ws.on('close', () => {
+				appendLine(this._channel,`WebSocket server ${port} closed`);
+				this._websocket_clients.splice(this._websocket_clients.indexOf(ws), 1);
+			});
+			ws.on('error', (err) => {
+				appendLine(this._channel,`WebSocket server ${port} error ${err}`);
+				this._websocket_clients.splice(this._websocket_clients.indexOf(ws), 1);
+			});
+		});
 	}
 
 	public createPanel(
@@ -342,6 +355,21 @@ export class vyPanel {
 		return this._disposables.length == 0;
 	}
 
+	public async dispose_websocket_server() {
+		for (const ws of this._websocket_clients) {
+			ws.terminate();  // Immediately close connection
+		}
+		this._websocket_clients.length = 0;
+		await new Promise<void>(resolve => {
+			this._websocket_server!.close(() => {
+				appendLine(this._channel,'WebSocket server fully closed');
+				resolve();
+			});
+		});
+		appendLine(this._channel, 'WebSocket server removed');
+		this._websocket_server = undefined;
+	}
+
 	public async dispose() {
 		// Clean up our resources
 		if (this._panel) this._panel.dispose();
@@ -349,18 +377,7 @@ export class vyPanel {
 			const x = this._disposables.pop();
 			if (x) x.dispose();
 		}
-		for (const ws of this._websocket_clients) {
-			ws.terminate();  // Immediately close connection
-		}
-		this._websocket_clients.length = 0;
-		await new Promise<void>(resolve => {
-			this._websocket_server!.close(() => {
-				this._channel.appendLine('WebSocket server fully closed');
-				resolve();
-			});
-		});
-		this._channel.appendLine('WebSocket server removed');
-		this._websocket_server = undefined;
+		await this.dispose_websocket_server();
 		this._panel = undefined;
 		this.clearDynamicFolder();
 	}

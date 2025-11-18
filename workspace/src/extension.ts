@@ -3,14 +3,37 @@ import { CppdbgType } from './types/cppdbg';
 import { CppVsDbgType } from './types/cppvsdbg';
 import { PydbgType } from './types/pydbg';
 import { vDbgPanel } from './vdbgpanel';
-import { read_file_data } from './panel';
+import { read_file_data, appendLine } from './panel';
+import { VyAccess, VyJson, VyScript, vyPanel } from './panel';
 import * as vdbg_sources from './types/sources';
 const fs = require('fs');
 const path = require('path');
-let fileWatchers: vscode.Disposable[] = [];
-import { VyAccess, VyJson, VyScript, vyPanel } from './panel';
-const channel:vscode.OutputChannel = vscode.window.createOutputChannel("vdbg");
-let CONTEXT_PANEL:vyPanel|undefined;
+
+declare global {
+    var __vytools_state__: ExtensionState | undefined;
+}
+
+interface ExtensionState {
+	isDeactivating: boolean;
+	channel:vscode.OutputChannel;
+    initialized: boolean;
+    fileWatchers: vscode.Disposable[];
+    contextPanel: vyPanel|undefined;
+}
+
+// Create or reuse persistent global state (survives browser reload!)
+const EXTENSION_SINGLETON: ExtensionState =
+    globalThis.__vytools_state__ ??
+    (globalThis.__vytools_state__ = {
+		isDeactivating: false,
+        initialized: false,
+		channel:vscode.window.createOutputChannel("vdbg"),
+        fileWatchers: [],
+        contextPanel: undefined,
+    });
+
+export { EXTENSION_SINGLETON, ExtensionState };
+
 const vdbgjson:VyJson = {panel_scripts:[],access_scripts:[],vdbg_scripts:[]}; 
 
 const repl = function(scrpt:VyScript|VyAccess, workspace:string, extpath:string) {
@@ -18,7 +41,18 @@ const repl = function(scrpt:VyScript|VyAccess, workspace:string, extpath:string)
 	scrpt.src = scrpt.src.replace(/\$\{extensionFolder\}/g, extpath);
 }
 
-function refresh_vdbg(context: vscode.ExtensionContext, update_json_only:boolean) {
+const cleanup = async function() {
+	appendLine(EXTENSION_SINGLETON.channel,'cleanupA')
+	EXTENSION_SINGLETON.fileWatchers.forEach((fileWatcher) => {
+		fileWatcher.dispose();
+	});
+	EXTENSION_SINGLETON.fileWatchers.length = 0;
+	await EXTENSION_SINGLETON.contextPanel?.dispose();
+	appendLine(EXTENSION_SINGLETON.channel,'cleanupB')
+} 
+
+async function refresh_vdbg(context: vscode.ExtensionContext, update_json_only:boolean) {
+	EXTENSION_SINGLETON.isDeactivating = false;
 	if (vscode.workspace.workspaceFolders && (vscode.workspace.workspaceFolders.length > 0)) {
 		const rootPath = vscode.workspace.workspaceFolders[0];
 		const pth = path.join(rootPath.uri.fsPath,'.vscode','vdbg.json');
@@ -56,38 +90,55 @@ function refresh_vdbg(context: vscode.ExtensionContext, update_json_only:boolean
 				vscode.window.showErrorMessage('Failed to parse .vscode/vdbg.json');
 			}
 		}
-		if (!update_json_only && CONTEXT_PANEL && vdbgjson.panel_scripts.length > 0) {
-			fileWatchers.forEach((fileWatcher) => {
-				fileWatcher.dispose();
-			});
-			fileWatchers.length = 0;
+		if (!update_json_only && EXTENSION_SINGLETON.contextPanel && vdbgjson.panel_scripts.length > 0) {
+			appendLine(EXTENSION_SINGLETON.channel, EXTENSION_SINGLETON.fileWatchers.length+' filewatchers')
+			cleanup();
 			vdbgjson.access_scripts.forEach((file:any) => {
 				const pth = vscode.Uri.file(path.dirname(file.src));
 				const pattern = new vscode.RelativePattern( pth, path.basename(file.src));
 				let listener = vscode.workspace.createFileSystemWatcher(pattern).onDidChange((uri) => {
 					const filePath = uri.fsPath;
 					if (file.listen && file.src === filePath) {
-						CONTEXT_PANEL?.sendMessage({ topic: file.listen, data: read_file_data(file) });
+						EXTENSION_SINGLETON.contextPanel?.sendMessage({ topic: file.listen, data: read_file_data(file) });
 					}
 				});
-				fileWatchers.push(listener);
+				EXTENSION_SINGLETON.fileWatchers.push(listener);
 				context.subscriptions.push(listener);
 			});
-			CONTEXT_PANEL.createPanel({}, vdbgjson.panel_scripts[0].dst.replace('.js',''), rootPath, vdbgjson.panel_scripts, vdbgjson.access_scripts, () => {
-				refresh_vdbg(context, false);
+			EXTENSION_SINGLETON.contextPanel?.createPanel({}, 
+				vdbgjson.panel_scripts[0].dst.replace('.js',''),
+				rootPath, vdbgjson.panel_scripts,
+				vdbgjson.access_scripts, () => {
+				if (!EXTENSION_SINGLETON.isDeactivating) {
+					refresh_vdbg(context, false);
+				}
 			});
 			if (vdbgjson.panel_scripts[0].websocket_port) {
-				CONTEXT_PANEL.websocketServer(vdbgjson.panel_scripts[0].websocket_port);
+				await EXTENSION_SINGLETON.contextPanel?.websocketServer(vdbgjson.panel_scripts[0].websocket_port);
 			}
 		}
 	}
 	return vdbgjson;
 }
 
-export function activate(context: vscode.ExtensionContext) {
+export async function deactivate() {
+    EXTENSION_SINGLETON.isDeactivating = true;
+	cleanup();
+	EXTENSION_SINGLETON.contextPanel = undefined;
+}
+appendLine(EXTENSION_SINGLETON.channel,'NEWWW')
+export async function activate(context: vscode.ExtensionContext) {
+
+	context.subscriptions.push(
+        vscode.workspace.onDidChangeWorkspaceFolders(() => {
+			appendLine(EXTENSION_SINGLETON.channel,'triggeredA')
+			EXTENSION_SINGLETON.contextPanel?.dispose();
+            refresh_vdbg(context, false);
+        })
+    );
 	// const vdbgjson = get_vdbg_json(rootPath, context); 
-	CONTEXT_PANEL = new vyPanel(context.extensionUri, channel);
-	refresh_vdbg(context, false);
+	EXTENSION_SINGLETON.contextPanel = new vyPanel(context.extensionUri, EXTENSION_SINGLETON.channel);
+	await refresh_vdbg(context, false);
 	let VDBG_PANEL:vDbgPanel | undefined;
 	let lastStackFrame:vdbg_sources.stackTraceBody|undefined;
 	let triggered = false;
@@ -107,11 +158,11 @@ export function activate(context: vscode.ExtensionContext) {
 	// context.subscriptions.push( vscode.debug.onDidReceiveDebugSessionCustomEvent(ev => {  }) );
 	// context.subscriptions.push( vscode.debug.onDidChangeBreakpoints(ev => { }) );
 	vscode.debug.registerDebugAdapterTrackerFactory('*', {
-		createDebugAdapterTracker: (session: vscode.DebugSession) => {
-			refresh_vdbg(context, true);
+		createDebugAdapterTracker: async (session: vscode.DebugSession) => {
+			await refresh_vdbg(context, true);
 			if (!VDBG_PANEL || VDBG_PANEL.disposed()) {
 				state = INIT_STATE;
-				VDBG_PANEL = new vDbgPanel(context.extensionUri, channel);
+				VDBG_PANEL = new vDbgPanel(context.extensionUri, EXTENSION_SINGLETON.channel);
 			}
 			
 			return {

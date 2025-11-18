@@ -66,7 +66,6 @@ export class vDbgPanel extends vyPanel {
 	};
 
 	public setType(variable_parser:vdbg_sources.LanguageDbgType, all_vdbg_scripts:VyConfigScript[], access_scripts:VyAccess[]) {
-		this._channel?.clear();
 		this._variable_parser = variable_parser;
 		this._dynamicUri.splice(0,this._dynamicUri.length);
 		if (!(this._session && this._session.workspaceFolder)) return false;
