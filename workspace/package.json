@@ -1,7 +1,7 @@
 {
 	"name": "vdbg",
 	"description": "Visual Debugger - An extensible visual debugger",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"publisher": "vytools",
 	"private": true,
 	"icon": "media/logo128.png",
