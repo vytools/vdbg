@@ -339,7 +339,6 @@ export class vyPanel {
 		let TOP_IMPRTD = null;
 		window.addEventListener('message', event => {
 			try {
-				console.log('event',event)
 				if (__topic_functions__.__handler__) {
 					__topic_functions__.__handler__(event.data);
 				} else if (event.data.topic && __topic_functions__.hasOwnProperty(event.data.topic)) {
