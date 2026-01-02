@@ -61,7 +61,11 @@ export function read_file_data(fle: VyAccess) {
 		}).replace(
 		/<pre><code(?: class="language-(.+?)")?>([\s\S]*?)<\/code><\/pre>/g,
 		(_, lang, code) => {
-			const { value } = hljs.highlight(code, { language: lang || 'plaintext' });
+			const unescapedCode = code
+				.replace(/&lt;/g, '<')
+				.replace(/&gt;/g, '>')
+				.replace(/&amp;/g, '&');
+			const { value } = hljs.highlight(unescapedCode, { language: lang || 'plaintext' });
 			return `<pre><code class="hljs language-${lang}">${value}</code></pre>`;
 		});
 	}

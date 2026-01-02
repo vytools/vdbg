@@ -19,3 +19,15 @@ def lagrng(t, w, t_desired):
         summ += product    
     return summ
 ```
+
+```text
+               +------------+
+          +--> | Real World | ---+
+          |    +------------+    |
+          |                      |
+   Control Signals       Sensed Information
+          |                      |
+          |    +------------+    |
+          +--- | Controller | <--+
+               +------------+
+```
